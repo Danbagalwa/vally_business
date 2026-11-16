@@ -68,5 +68,9 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vally Business utilise tes photos pour illustrer tes articles.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Vally Business utilise l’appareil photo pour photographier tes articles.</string>
 	</dict>
 </plist>
