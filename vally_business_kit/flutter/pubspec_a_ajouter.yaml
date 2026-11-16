@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────
+#  Vally Business — à fusionner dans ton pubspec.yaml
+# ─────────────────────────────────────────────────────────────
+
+dependencies:
+  flutter_native_splash: ^2.4.8   # garde l'écran de démarrage pendant le chargement (preserve/remove)
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/splash/
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.otf
+          weight: 600
+    - family: DMSerifDisplay
+      fonts:
+        - asset: assets/fonts/DMSerifDisplay-Regular.ttf
+
+# ── Icône de l'application ───────────────────────────────────
+#  Commande : dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"        # 1024×1024, sans transparence
+  android: "ic_launcher"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FCE4EC"           # rose pâle
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  adaptive_icon_foreground_inset: 0             # le dessin a déjà sa marge de sécurité
+  adaptive_icon_monochrome: "assets/icon/app_icon_monochrome.png"   # icône à thème Android 13+
+  ios: true
+  remove_alpha_ios: true                        # l'App Store refuse la transparence
+  background_color_ios: "#FCE4EC"
+
+# ── Écran de démarrage ───────────────────────────────────────
+#  Commande : dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#FFF7FA"
+  image: assets/splash/splash_logo.png
+  branding: assets/splash/branding.png
+  branding_mode: bottom
+  branding_bottom_padding: 48
+  color_dark: "#1E1218"
+  image_dark: assets/splash/splash_logo.png
+  branding_dark: assets/splash/branding_dark.png
+
+  android_12:
+    image: assets/splash/splash_android12.png
+    color: "#FFF7FA"
+    icon_background_color: "#FFF7FA"
+    image_dark: assets/splash/splash_android12.png
+    color_dark: "#1E1218"
+    icon_background_color_dark: "#1E1218"
+
+  android: true
+  ios: true
+  web: false
