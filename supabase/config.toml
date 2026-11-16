@@ -1,0 +1,6 @@
+# Configuration minimale du CLI Supabase pour Vally Business.
+# Les valeurs non précisées prennent les réglages par défaut du CLI.
+project_id = "vally_business"
+
+[db]
+major_version = 17

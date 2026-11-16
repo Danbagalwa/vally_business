@@ -60,3 +60,7 @@ dart_defines.json
 # Supabase CLI
 supabase/.temp/
 supabase/.branches/
+
+# Tests SQL
+supabase/tests/node_modules/
+supabase/tests/package-lock.json

@@ -1,0 +1,12 @@
+{
+  "name": "vally-business-tests-sql",
+  "private": true,
+  "type": "module",
+  "description": "Teste les migrations Supabase dans un Postgres local en mémoire (PGlite), sans toucher au projet distant.",
+  "scripts": {
+    "test": "node regles_metier.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.7"
+  }
+}
