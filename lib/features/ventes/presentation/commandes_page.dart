@@ -83,7 +83,7 @@ class _CommandesPageState extends ConsumerState<CommandesPage> {
       ),
       body: commandes.when(
         skipLoadingOnRefresh: true,
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListeSquelette(),
         error: (e, _) => PageErreur(
             erreur: e, onReessayer: () => ref.invalidate(commandesProvider)),
         data: (toutes) {

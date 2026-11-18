@@ -237,22 +237,14 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
 
   Future<void> _supprimer() async {
     final article = _article!;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer cet article ?'),
-        content: Text('« ${article.nom} » sera retiré du stock.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Supprimer')),
-        ],
-      ),
+    final ok = await confirmer(
+      context,
+      titre: 'Supprimer cet article ?',
+      message: '« ${article.nom} » sera retiré du stock.',
+      bouton: 'Supprimer',
+      destructif: true,
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     setState(() => _enCours = true);
     try {
       await ref.read(stockRepositoryProvider).supprimer(article);

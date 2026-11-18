@@ -47,20 +47,14 @@ class _CommandeDetailPageState extends ConsumerState<CommandeDetailPage> {
     }
   }
 
-  Future<bool> _confirmer(String titre, String message, String bouton) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(titre),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Retour')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(bouton)),
-        ],
-      ),
-    );
-    return ok == true;
-  }
+  /// Les suppressions sont confirmées avec un bouton couleur d'erreur.
+  Future<bool> _confirmer(String titre, String message, String bouton) => confirmer(
+        context,
+        titre: titre,
+        message: message,
+        bouton: bouton,
+        destructif: true,
+      );
 
   Future<void> _encaisser(Commande c, Boutique b) async {
     final p = await demanderPaiement(context,

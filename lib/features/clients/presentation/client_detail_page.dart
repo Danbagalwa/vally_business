@@ -69,18 +69,14 @@ class _Fiche extends ConsumerWidget {
   }
 
   Future<void> _supprimer(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer ce client ?'),
-        content: const Text('Ses ventes et commandes restent, sans nom de client.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Retour')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
-        ],
-      ),
+    final ok = await confirmer(
+      context,
+      titre: 'Supprimer ce client ?',
+      message: 'Ses ventes et commandes restent, sans nom de client.',
+      bouton: 'Supprimer',
+      destructif: true,
     );
-    if (ok != true) return;
+    if (!ok) return;
     try {
       await ref.read(clientsRepositoryProvider).supprimer(client.id);
       ref.invalidate(clientsResumeProvider);

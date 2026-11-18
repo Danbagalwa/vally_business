@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vally_business/core/format/dates.dart';
+import 'package:vally_business/core/widgets/elements.dart';
 import 'package:vally_business/features/accueil/presentation/accueil_page.dart';
 import 'package:vally_business/features/auth/data/auth_repository.dart';
 import 'package:vally_business/features/boutique/data/boutique_repository.dart';
@@ -49,7 +50,7 @@ final _commandes = [
 
 final _clients = [
   ClientResume.fromJson({
-    'id': 'cl-Maman Rose', 'nom': 'Maman Rose Mbuyi Kalonji', 'telephone': '081 234 5678',
+    'id': 'cl-Maman Rose Mbuyi Kalonji', 'nom': 'Maman Rose Mbuyi Kalonji', 'telephone': '081 234 5678',
     'nb_achats': 12, 'total_achats': 4250000, 'total_du': 1236000, 'nb_impayes': 1,
     'dernier_achat': _aujourdhui,
   }),
@@ -114,7 +115,7 @@ void main() {
     'Commandes': (const CommandesPage(), 'Nouvelle commande'),
     'Plus': (const PlusPage(), 'Clients et dettes'),
     'Clients': (const ClientsPage(), 'On te doit '),
-    'Fiche client': (const ClientDetailPage(clientId: 'cl-Maman Rose'), 'À encaisser'),
+    'Fiche client': (const ClientDetailPage(clientId: 'cl-Maman Rose Mbuyi Kalonji'), 'À encaisser'),
     'Détail commande': (const CommandeDetailPage(commandeId: 'k1'), 'Livraison'),
     'Détail vente': (const CommandeDetailPage(commandeId: 'v1'), 'Paiements'),
     'Nouvelle vente': (const SaisieVentePage(type: TypeCommande.vente), 'Encaisser'),
@@ -126,7 +127,7 @@ void main() {
       testWidgets('$nom s’affiche sans débordement à 360 px ($nomTheme)', (tester) async {
         await _afficher(tester, page, theme);
         expect(tester.takeException(), isNull);
-        expect(find.textContaining(texte), findsWidgets);
+        expect(find.textContaining(RegExp(RegExp.escape(texte), caseSensitive: false)), findsWidgets);
       });
     }
   }
@@ -135,7 +136,7 @@ void main() {
     await _afficher(tester, const CommandesPage(), VallyTheme.light);
     expect(find.text('Mme Kabila Ngalula'), findsOneWidget);
     expect(find.text('Marquer prête'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilterChip, 'En retard'));
+    await tester.tap(find.widgetWithText(FiltrePastille, 'En retard'));
     await tester.pumpAndSettle();
     expect(find.text('Marquer livrée'), findsOneWidget);
   });

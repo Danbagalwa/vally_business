@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -6,8 +7,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/elements.dart';
-import '../../../core/widgets/montant_texte.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/theme_mode.dart';
 import '../../boutique/data/boutique_repository.dart';
 import '../../clients/data/clients_repository.dart';
 import '../../clients/presentation/clients_page.dart';
@@ -58,16 +59,25 @@ class AccueilPage extends ConsumerWidget {
             icon: const Icon(Icons.insights_outlined),
             onPressed: () => context.push(Routes.statistiques),
           ),
+          const BoutonTheme(),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: rafraichir,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, VallySpace.s6),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Text(_majuscule(DateFormat('EEEE d MMMM', 'fr').format(aujourdhui)),
-                style: theme.textTheme.bodySmall),
-            const SizedBox(height: VallySpace.s4),
+            // ─── Carte héro : l'essentiel du jour ───
+            _CarteHero(
+              date: aujourdhui,
+              jour: jour,
+              mois: mois,
+              aLivrer: aLivrer.length + enRetard.length,
+              devise: devise,
+              onLivraisons: () => context.go(Routes.commandes),
+              onMois: () => context.push(Routes.statistiques),
+            ),
+            const SizedBox(height: 14),
 
             // ─── Raccourcis ───
             Row(children: [
@@ -78,27 +88,12 @@ class AccueilPage extends ConsumerWidget {
                   onTap: () => context.push(Routes.nouvelleVente),
                 ),
               ),
-              const SizedBox(width: VallySpace.s2),
+              const SizedBox(width: 10),
               Expanded(
                 child: _Raccourci(
-                  icone: Icons.inventory_outlined,
+                  icone: Icons.inventory_2_outlined,
                   libelle: 'Nouvelle commande',
                   onTap: () => context.push(Routes.nouvelleCommande),
-                ),
-              ),
-            ]),
-            const SizedBox(height: VallySpace.s6),
-
-            // ─── Aujourd'hui / ce mois ───
-            Row(children: [
-              Expanded(child: _CarteResume(titre: 'Aujourd’hui', resume: jour, devise: devise)),
-              const SizedBox(width: VallySpace.s2),
-              Expanded(
-                child: _CarteResume(
-                  titre: _majuscule(DateFormat('MMMM', 'fr').format(aujourdhui)),
-                  resume: mois,
-                  devise: devise,
-                  onTap: () => context.push(Routes.statistiques),
                 ),
               ),
             ]),
@@ -178,9 +173,9 @@ class AccueilPage extends ConsumerWidget {
   static bool _memeJour(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  static String _majuscule(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
+/// Raccourci : tuile d'icône + libellé, dans une carte.
 class _Raccourci extends StatelessWidget {
   const _Raccourci({required this.icone, required this.libelle, required this.onTap});
 
@@ -191,21 +186,21 @@ class _Raccourci extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(VallyRadius.md),
+    return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          padding: const EdgeInsets.all(12),
           child: Row(children: [
-            Icon(icone, color: theme.colorScheme.onPrimaryContainer, size: 22),
+            TuileIcone(icone, taille: 40),
             const SizedBox(width: 10),
             Expanded(
               child: Text(libelle,
-                  style: theme.textTheme.labelLarge
-                      ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                   maxLines: 2),
             ),
           ]),
@@ -215,51 +210,141 @@ class _Raccourci extends StatelessWidget {
   }
 }
 
-class _CarteResume extends StatelessWidget {
-  const _CarteResume({required this.titre, required this.resume, required this.devise, this.onTap});
+/// Carte héro : dégradé de marque, logo en filigrane, ventes du jour en
+/// grand, et la tuile qui demande une action (à livrer) mise en avant.
+class _CarteHero extends StatelessWidget {
+  const _CarteHero({
+    required this.date,
+    required this.jour,
+    required this.mois,
+    required this.aLivrer,
+    required this.devise,
+    required this.onLivraisons,
+    required this.onMois,
+  });
 
-  final String titre;
-  final ResumePeriode resume;
+  final DateTime date;
+  final ResumePeriode jour;
+  final ResumePeriode mois;
+  final int aLivrer;
   final Devise devise;
-  final VoidCallback? onTap;
+  final VoidCallback onLivraisons;
+  final VoidCallback onMois;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final r = resume;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(titre, style: theme.textTheme.labelMedium),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: MontantTexte(r.totalVendu, devise: devise, style: theme.textTheme.titleMedium
-                  ?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-            ),
-            Text('${r.nbVentes} vente${r.nbVentes > 1 ? 's' : ''}', style: theme.textTheme.bodySmall),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(children: [
-                Text('Bénéfice ', style: theme.textTheme.bodySmall),
-                MontantTexte(r.benefice.abs(),
-                    devise: devise,
-                    sens: r.benefice > 0
-                        ? SensMontant.positif
-                        : (r.benefice < 0 ? SensMontant.negatif : SensMontant.neutre),
-                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+    final vally = theme.extension<VallyColors>()!;
+    const blanc = Colors.white;
+    final blanc80 = blanc.withValues(alpha: 0.8);
+    final tabulaires = const [FontFeature.tabularFigures()];
+
+    Widget sousBloc({required String titre, required String valeur, VoidCallback? onTap, bool action = false}) {
+      final fond = action ? vally.heroAction : blanc.withValues(alpha: 0.12);
+      final encre = action ? vally.heroSurAction : blanc;
+      return Expanded(
+        child: Material(
+          color: fond,
+          borderRadius: BorderRadius.circular(VallyRadius.r14),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(titre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: action ? encre : blanc80, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(valeur,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                          color: encre, fontWeight: FontWeight.w800, fontFeatures: tabulaires)),
+                ),
               ]),
             ),
+          ),
+        ),
+      );
+    }
+
+    final benefice = jour.benefice;
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(VallyRadius.lg),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [vally.heroDebut, vally.heroFin],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: vally.heroDebut.withValues(alpha: 0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(children: [
+        // Logo en filigrane, débordant du coin haut-droit.
+        Positioned(
+          top: -40,
+          right: -40,
+          child: ExcludeSemantics(
+            child: Opacity(
+              opacity: 0.09,
+              child: Image.asset('assets/icon/app_icon_monochrome.png',
+                  width: 210, height: 210, color: blanc),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(DateFormat('EEEE d MMMM', 'fr').format(date).toUpperCase(),
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: blanc80, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+            const SizedBox(height: 8),
+            Text('Vendu aujourd’hui', style: theme.textTheme.bodySmall?.copyWith(color: blanc80)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                FormatMontant.formater(jour.totalVendu, devise),
+                style: theme.textTheme.displaySmall?.copyWith(
+                    color: blanc, fontSize: 38, letterSpacing: -1, fontFeatures: tabulaires),
+              ),
+            ),
+            Text(
+              '${jour.nbVentes} vente${jour.nbVentes > 1 ? 's' : ''}'
+              '${benefice.abs() >= 0.005 ? ' · bénéfice ${FormatMontant.formater(benefice.abs(), devise, sens: benefice > 0 ? SensMontant.positif : SensMontant.negatif)}' : ''}',
+              style: theme.textTheme.bodySmall?.copyWith(color: blanc80, fontFeatures: tabulaires),
+            ),
+            const SizedBox(height: 14),
+            Row(children: [
+              sousBloc(
+                titre: 'Vendu ce mois-ci',
+                valeur: FormatMontant.formater(mois.totalVendu, devise),
+                onTap: onMois,
+              ),
+              const SizedBox(width: 8),
+              sousBloc(
+                titre: aLivrer > 0 ? 'À livrer' : 'Livraisons',
+                valeur: aLivrer > 0
+                    ? '$aLivrer commande${aLivrer > 1 ? 's' : ''}'
+                    : 'Rien aujourd’hui',
+                onTap: onLivraisons,
+                action: aLivrer > 0,
+              ),
+            ]),
           ]),
         ),
-      ),
+      ]),
     );
   }
 }

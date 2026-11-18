@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vally_business/core/format/montant.dart';
 import 'package:vally_business/core/widgets/champ_montant.dart';
+import 'package:vally_business/core/widgets/elements.dart';
 import 'package:vally_business/features/auth/data/auth_repository.dart';
 import 'package:vally_business/features/boutique/data/boutique_repository.dart';
 import 'package:vally_business/features/stock/data/stock_repository.dart';
@@ -77,20 +78,20 @@ void main() {
     expect(find.text('1 épuisé · 1 bientôt épuisé'), findsOneWidget);
     expect(find.text('Enfant'), findsWidgets);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Enfant'));
+    await tester.tap(find.widgetWithText(FiltrePastille, 'Enfant'));
     await tester.pumpAndSettle();
     expect(find.text('Pyjama ourson'), findsOneWidget);
     expect(find.text('Robe de soirée'), findsNothing);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Tous'));
+    await tester.tap(find.widgetWithText(FiltrePastille, 'Tous'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'Chemise'));
+    await tester.tap(find.widgetWithText(FiltrePastille, 'Chemise'));
     await tester.pumpAndSettle();
     expect(find.text('Chemise wax'), findsOneWidget);
     expect(find.text('Robe de soirée'), findsNothing);
 
     // Retaper la catégorie active la retire.
-    await tester.tap(find.widgetWithText(FilterChip, 'Chemise'));
+    await tester.tap(find.widgetWithText(FiltrePastille, 'Chemise'));
     await tester.tap(find.byTooltip('Rechercher'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'soiree');

@@ -55,7 +55,7 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
       ),
       body: ref.watch(clientsResumeProvider).when(
             skipLoadingOnRefresh: true,
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const ListeSquelette(),
             error: (e, _) => PageErreur(
                 erreur: e, onReessayer: () => ref.invalidate(clientsResumeProvider)),
             data: (tous) {

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../core/widgets/elements.dart';
 import '../../../../theme/app_theme.dart';
 import '../../data/tableau_de_bord_repository.dart';
 import '../../domain/periode.dart';
@@ -41,14 +42,11 @@ class SelecteurPeriode extends ConsumerWidget {
           for (final type in TypePeriode.values)
             Padding(
               padding: const EdgeInsets.only(right: VallySpace.s2),
-              child: FilterChip(
-                label: Text(type.libelle),
-                avatar: type == TypePeriode.personnalisee
-                    ? const Icon(Icons.date_range, size: 18)
-                    : null,
-                selected: periode.type == type,
-                showCheckmark: false,
-                onSelected: (_) => type == TypePeriode.personnalisee
+              child: FiltrePastille(
+                libelle: type.libelle,
+                icone: type == TypePeriode.personnalisee ? Icons.date_range : null,
+                actif: periode.type == type,
+                onTap: () => type == TypePeriode.personnalisee
                     ? _choisirDates(context, ref)
                     : ref.read(periodeProvider.notifier).choisir(Periode.de(type)),
               ),

@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'core/router/app_router.dart';
 import 'theme/app_theme.dart';
+import 'theme/theme_mode.dart';
 
 /// Racine de l'application.
 class VallyApp extends ConsumerWidget {
@@ -15,7 +16,7 @@ class VallyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: VallyTheme.light,
       darkTheme: VallyTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(modeThemeProvider),
       locale: localeVally,
       supportedLocales: const [localeVally],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

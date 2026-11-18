@@ -42,8 +42,9 @@ class VallyPalette {
   static const attentionDark = Color(0xFFF2A541);
 }
 
-/// Couleurs propres à l'appli : bénéfice (vert) et attention (ambre).
-/// Toujours accompagnées d'un signe + / − ou d'une icône.
+/// Couleurs propres à l'appli : bénéfice (vert) et attention (ambre),
+/// toujours accompagnées d'un signe + / − ou d'une icône ; graphique ;
+/// carte héro (dégradé de marque) et sa tuile « action ».
 @immutable
 class VallyColors extends ThemeExtension<VallyColors> {
   const VallyColors({
@@ -51,34 +52,62 @@ class VallyColors extends ThemeExtension<VallyColors> {
     required this.attention,
     required this.rosePop,
     required this.graphique,
+    required this.heroDebut,
+    required this.heroFin,
+    required this.heroAction,
+    required this.heroSurAction,
   });
 
   final Color benefice;  // bénéfice, entrée d'argent, commande soldée
   final Color attention; // sortie d'argent, reste à payer, stock faible, remise
   final Color rosePop;   // décorations
   final Color graphique; // marques des graphiques (barres)
+  final Color heroDebut; // carte héro : dégradé (texte blanc dessus)
+  final Color heroFin;
+  final Color heroAction;    // tuile qui demande une action, sur la carte héro
+  final Color heroSurAction; // texte de cette tuile
 
   static const light = VallyColors(
     benefice: VallyPalette.benefice,
     attention: VallyPalette.attention,
     rosePop: VallyPalette.rosePop,
     graphique: VallyPalette.graphique,
+    heroDebut: VallyPalette.rose,
+    heroFin: VallyPalette.roseDeep,
+    heroAction: VallyPalette.surfaceRaised,
+    heroSurAction: VallyPalette.roseDeep,
   );
   static const dark = VallyColors(
     benefice: VallyPalette.beneficeDark,
     attention: VallyPalette.attentionDark,
     rosePop: VallyPalette.rosePop,
     graphique: VallyPalette.graphiqueDark,
+    heroDebut: VallyPalette.roseDeep,
+    heroFin: VallyPalette.roseSoftDark,
+    heroAction: VallyPalette.roseDeepDark,
+    heroSurAction: VallyPalette.ink,
   );
 
   @override
-  VallyColors copyWith(
-          {Color? benefice, Color? attention, Color? rosePop, Color? graphique}) =>
+  VallyColors copyWith({
+    Color? benefice,
+    Color? attention,
+    Color? rosePop,
+    Color? graphique,
+    Color? heroDebut,
+    Color? heroFin,
+    Color? heroAction,
+    Color? heroSurAction,
+  }) =>
       VallyColors(
         benefice: benefice ?? this.benefice,
         attention: attention ?? this.attention,
         rosePop: rosePop ?? this.rosePop,
         graphique: graphique ?? this.graphique,
+        heroDebut: heroDebut ?? this.heroDebut,
+        heroFin: heroFin ?? this.heroFin,
+        heroAction: heroAction ?? this.heroAction,
+        heroSurAction: heroSurAction ?? this.heroSurAction,
       );
 
   @override
@@ -89,21 +118,34 @@ class VallyColors extends ThemeExtension<VallyColors> {
       attention: Color.lerp(attention, other.attention, t)!,
       rosePop: Color.lerp(rosePop, other.rosePop, t)!,
       graphique: Color.lerp(graphique, other.graphique, t)!,
+      heroDebut: Color.lerp(heroDebut, other.heroDebut, t)!,
+      heroFin: Color.lerp(heroFin, other.heroFin, t)!,
+      heroAction: Color.lerp(heroAction, other.heroAction, t)!,
+      heroSurAction: Color.lerp(heroSurAction, other.heroSurAction, t)!,
     );
   }
 }
 
-/// Espacements (grille de 4) et rayons.
+/// Espacements : grille de 2 (valeurs les plus utilisées).
 class VallySpace {
   static const s1 = 4.0;
   static const s2 = 8.0;
-  static const s4 = 16.0; // marge des écrans, padding des cartes
+  static const s3 = 12.0;
+  static const s4 = 16.0; // marge des écrans
+  static const s5 = 20.0;
   static const s6 = 24.0; // entre sections
+  static const entreCartes = 10.0;
+  static const paddingCarte = 14.0;
+  static const section = 28.0;
 }
 
+/// Rayons : 10 · 12 · 14 · 16 · 20.
 class VallyRadius {
-  static const sm = 8.0;  // champs, badges
-  static const md = 16.0; // cartes, boutons
+  static const xs = 10.0;  // boutons compacts, miniatures
+  static const sm = 12.0;  // boutons, champs, bandeaux, notes
+  static const r14 = 14.0; // sous-blocs, tuiles 48 px
+  static const md = 16.0;  // cartes
+  static const lg = 20.0;  // carte héro, pilules
   static const pill = 999.0;
 }
 
@@ -201,14 +243,20 @@ class VallyTheme {
       labelSmall: TextStyle(fontFamily: _sans, fontSize: 11, height: 16 / 11, fontWeight: FontWeight.w500, color: inkMuted),
     );
 
-    final arrondi = RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.md));
-    const texteBouton = TextStyle(fontFamily: _sans, fontSize: 14, fontWeight: FontWeight.w600);
-    const tailleBouton = Size(64, 44);
+    // Méthode de design : boutons 46 px rayon 12, champs remplis sans
+    // bordure au repos (liseré rose 1,6 px au focus), AppBar fondue.
+    final arrondi = RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.sm));
+    const texteBouton = TextStyle(fontFamily: _sans, fontSize: 14, fontWeight: FontWeight.w700);
+    const tailleBouton = Size(64, 46);
     const paddingBouton = EdgeInsets.symmetric(horizontal: 20);
+    final clair = brightness == Brightness.light;
+    final fondChamp = ink.withValues(alpha: clair ? 0.05 : 0.06);
     final bordChamp = OutlineInputBorder(
       borderRadius: BorderRadius.circular(VallyRadius.sm),
-      borderSide: BorderSide(color: line),
+      borderSide: BorderSide.none,
     );
+    Color selonFocus(Set<WidgetState> s) =>
+        s.contains(WidgetState.error) ? error : (s.contains(WidgetState.focused) ? rose : inkMuted);
 
     return ThemeData(
       useMaterial3: true,
@@ -222,11 +270,14 @@ class VallyTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
         foregroundColor: ink,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 1,
+        shadowColor: line,
         centerTitle: false,
         toolbarHeight: 56,
         titleTextStyle: text.titleLarge,
+        actionsIconTheme: IconThemeData(color: ink, size: 21),
       ),
       cardTheme: CardThemeData(
         color: surfaceRaised,
@@ -234,7 +285,7 @@ class VallyTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(VallyRadius.md),
-          side: BorderSide(color: line),
+          side: BorderSide(color: line.withValues(alpha: clair ? 1 : 0.8)),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -262,7 +313,8 @@ class VallyTheme {
           foregroundColor: rose,
           minimumSize: const Size(48, 40),
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          textStyle: texteBouton,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.xs)),
+          textStyle: texteBouton.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -276,20 +328,21 @@ class VallyTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceRaised,
+        fillColor: fondChamp,
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         labelStyle: TextStyle(color: inkMuted, fontSize: 14),
-        floatingLabelStyle: TextStyle(color: roseDeep, fontSize: 14),
+        floatingLabelStyle: TextStyle(color: roseDeep, fontSize: 14, fontWeight: FontWeight.w600),
         hintStyle: TextStyle(color: inkMuted, fontSize: 14),
         helperStyle: TextStyle(color: inkMuted, fontSize: 12),
         border: bordChamp,
         enabledBorder: bordChamp,
-        focusedBorder: bordChamp.copyWith(borderSide: BorderSide(color: rose, width: 2)),
-        errorBorder: bordChamp.copyWith(borderSide: BorderSide(color: error)),
-        focusedErrorBorder: bordChamp.copyWith(borderSide: BorderSide(color: error, width: 2)),
-        prefixIconColor: inkMuted,
-        suffixIconColor: inkMuted,
+        disabledBorder: bordChamp,
+        focusedBorder: bordChamp.copyWith(borderSide: BorderSide(color: rose, width: 1.6)),
+        errorBorder: bordChamp.copyWith(borderSide: BorderSide(color: error, width: 1.2)),
+        focusedErrorBorder: bordChamp.copyWith(borderSide: BorderSide(color: error, width: 1.6)),
+        prefixIconColor: WidgetStateColor.resolveWith(selonFocus),
+        suffixIconColor: WidgetStateColor.resolveWith(selonFocus),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surfaceRaised,

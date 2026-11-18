@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/widgets/elements.dart';
 import '../../../core/widgets/page_erreur.dart';
 import '../../stock/data/stock_repository.dart';
 import '../data/ventes_repository.dart';
@@ -28,24 +29,16 @@ Future<void> changerStatut(
   StatutLivraison statut,
 ) async {
   if (statut == StatutLivraison.annulee) {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(c.estCommande ? 'Annuler la commande ?' : 'Annuler la vente ?'),
-        content: Text('Les articles reviennent en stock et ne comptent plus '
-            'dans tes bénéfices.'
-            '${c.totalPaye > 0 ? ' Pense à rendre l’argent déjà reçu.' : ''}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Retour')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Annuler')),
-        ],
-      ),
+    final ok = await confirmer(
+      context,
+      titre: c.estCommande ? 'Annuler la commande ?' : 'Annuler la vente ?',
+      message: 'Les articles reviennent en stock et ne comptent plus '
+          'dans tes bénéfices.'
+          '${c.totalPaye > 0 ? ' Pense à rendre l’argent déjà reçu.' : ''}',
+      bouton: c.estCommande ? 'Annuler la commande' : 'Annuler la vente',
+      destructif: true,
     );
-    if (ok != true) return;
+    if (!ok) return;
   }
   try {
     await ref.read(ventesRepositoryProvider).changerStatutLivraison(c.id, statut);

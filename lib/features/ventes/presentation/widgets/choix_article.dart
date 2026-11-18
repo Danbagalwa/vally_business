@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/format/montant.dart';
+import '../../../../core/widgets/elements.dart';
 import '../../../../core/widgets/montant_texte.dart';
 import '../../../../core/widgets/page_erreur.dart';
 import '../../../../theme/app_theme.dart';
@@ -71,7 +72,7 @@ class _ListeArticlesState extends ConsumerState<_ListeArticles> {
         ),
         Expanded(
           child: ref.watch(articlesProvider).when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const ListeSquelette(avecResume: false, lignes: 8),
                 error: (e, _) => PageErreur(
                     erreur: e,
                     onReessayer: () => ref.invalidate(articlesProvider)),

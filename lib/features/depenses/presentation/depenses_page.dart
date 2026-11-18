@@ -105,7 +105,7 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
       ),
       body: mouvements.when(
         skipLoadingOnRefresh: true,
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListeSquelette(),
         error: (e, _) => PageErreur(erreur: e, onReessayer: () => ref.invalidate(mouvementsProvider)),
         data: (tous) {
           final total = Bilan.de(tous);
