@@ -30,6 +30,12 @@ class IndicateursPeriode {
   final int nbCommandes;
   final int piecesVendues;
 
+  /// Montant moyen d'une vente (0 s'il n'y en a pas).
+  double get panierMoyen => nbCommandes == 0 ? 0 : chiffreAffaires / nbCommandes;
+
+  /// Part du bénéfice dans le total vendu, en % (null sans vente).
+  double? get margePourcent => chiffreAffaires == 0 ? null : benefice / chiffreAffaires * 100;
+
   factory IndicateursPeriode.fromJson(Map<String, dynamic> j) =>
       IndicateursPeriode(
         totalApprovisionne: _n(j['total_approvisionne']),
@@ -100,6 +106,7 @@ class ArticleVendu {
     required this.articleId,
     required this.nom,
     required this.description,
+    this.categorie = '',
     required this.quantite,
     required this.chiffreAffaires,
     required this.benefice,
@@ -108,6 +115,7 @@ class ArticleVendu {
   final String articleId;
   final String nom;
   final String description;
+  final String categorie;
   final int quantite;
   final double chiffreAffaires;
   final double benefice;
@@ -116,6 +124,7 @@ class ArticleVendu {
         articleId: j['article_id'] as String,
         nom: j['nom'] as String,
         description: [j['categorie'], j['taille']].whereType<String>().join(' · '),
+        categorie: j['categorie'] as String? ?? '',
         quantite: _i(j['quantite']),
         chiffreAffaires: _n(j['chiffre_affaires']),
         benefice: _n(j['benefice']),
@@ -178,4 +187,39 @@ int joursSansVente(Article a, DateTime aujourdhui) {
   return DateTime(aujourdhui.year, aujourdhui.month, aujourdhui.day)
       .difference(ref)
       .inDays;
+}
+
+/// Variation en % entre deux valeurs (null si la précédente vaut 0 :
+/// on ne peut pas calculer de pourcentage).
+double? variation(num actuel, num precedent) {
+  if (precedent == 0) return null;
+  return (actuel - precedent) / precedent.abs() * 100;
+}
+
+/// Une catégorie et ce qu'elle a rapporté sur la période.
+class PartCategorieVendue {
+  const PartCategorieVendue(this.categorie, this.chiffreAffaires, this.quantite, this.part);
+
+  final String categorie;
+  final double chiffreAffaires;
+  final int quantite;
+
+  /// Part du total vendu, entre 0 et 1.
+  final double part;
+}
+
+/// Ventes regroupées par catégorie, la plus grosse d'abord.
+List<PartCategorieVendue> parCategorie(Iterable<ArticleVendu> articles) {
+  final ca = <String, double>{};
+  final qte = <String, int>{};
+  for (final a in articles) {
+    final c = a.categorie.isEmpty ? 'Autre' : a.categorie;
+    ca[c] = (ca[c] ?? 0) + a.chiffreAffaires;
+    qte[c] = (qte[c] ?? 0) + a.quantite;
+  }
+  final total = ca.values.fold<double>(0, (s, v) => s + v);
+  return [
+    for (final MapEntry(key: c, value: v) in ca.entries)
+      PartCategorieVendue(c, v, qte[c]!, total == 0 ? 0 : v / total),
+  ]..sort((a, b) => b.chiffreAffaires.compareTo(a.chiffreAffaires));
 }

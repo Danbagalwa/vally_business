@@ -47,6 +47,11 @@ Future<void> _ouvrir(WidgetTester tester, ThemeData theme) async {
             article(nom: 'Robe pagne fleurie', quantiteAchetee: 5, quantiteVendue: 3),
           ]),
       commandesProvider.overrideWith((ref) async => [Commande.fromJson(vente)]),
+      indicateursPrecedentsProvider.overrideWith((ref) async => const IndicateursPeriode(
+            totalApprovisionne: 1000000, chiffreAffaires: 1000000, coutVentes: 700000,
+            benefice: 300000, totalEncaisse: 900000, resteDu: 100000, gainAuDessus: 0,
+            coutRemises: 20000, nbCommandes: 2, piecesVendues: 4,
+          )),
       indicateursPeriodeProvider.overrideWith((ref) async => const IndicateursPeriode(
             totalApprovisionne: 3450000,
             chiffreAffaires: 1250000,
@@ -101,9 +106,9 @@ void main() {
       expect(find.text('+ 350 000 CDF'), findsWidgets);
       expect(find.text('Bénéfice par mois'), findsOneWidget);
 
-      await tester.scrollUntilVisible(find.text('Ne partent pas'), 300, scrollable: _listeVerticale);
+      await tester.scrollUntilVisible(find.text('NE PARTENT PAS'), 300, scrollable: _listeVerticale);
       expect(tester.takeException(), isNull);
-      expect(find.text('Les plus vendus'), findsOneWidget);
+      expect(find.text('LES PLUS VENDUS'), findsOneWidget);
     });
   }
 

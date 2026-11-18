@@ -86,3 +86,11 @@ final articlesVendusProvider =
   await _suivreVentesEtStock(ref);
   return ref.watch(tableauDeBordRepositoryProvider).articlesVendus(periode);
 });
+
+/// Mêmes indicateurs sur la période de comparaison (voir Periode.precedente).
+final indicateursPrecedentsProvider =
+    FutureProvider.autoDispose<IndicateursPeriode>((ref) async {
+  final periode = ref.watch(periodeProvider).precedente();
+  await _suivreVentesEtStock(ref);
+  return ref.watch(tableauDeBordRepositoryProvider).periode(periode);
+});
