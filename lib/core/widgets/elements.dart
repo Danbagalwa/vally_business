@@ -221,7 +221,7 @@ class FiltrePastille extends StatelessWidget {
               if (icone != null) ...[Icon(icone, size: 16, color: texte), const SizedBox(width: 6)],
               Text(libelle,
                   style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: texte)),
+                      ?.copyWith(fontSize: 12, fontWeight: FontWeight.w600, color: texte)),
               if (compte != null && compte! > 0) ...[
                 const SizedBox(width: 6),
                 Container(
@@ -343,7 +343,7 @@ class NoteInfo extends StatelessWidget {
         Expanded(
           child: Text(texte,
               style: theme.textTheme.bodySmall
-                  ?.copyWith(fontSize: 13, color: theme.colorScheme.onSurfaceVariant)),
+                  ?.copyWith(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
         ),
       ]),
     );

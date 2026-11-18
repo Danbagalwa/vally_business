@@ -317,7 +317,7 @@ class _CarteHero extends StatelessWidget {
               child: Text(
                 FormatMontant.formater(jour.totalVendu, devise),
                 style: theme.textTheme.displaySmall?.copyWith(
-                    color: blanc, fontSize: 38, letterSpacing: -1, fontFeatures: tabulaires),
+                    color: blanc, fontSize: 32, letterSpacing: -1, fontFeatures: tabulaires),
               ),
             ),
             Text(

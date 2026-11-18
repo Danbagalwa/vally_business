@@ -147,7 +147,7 @@ class _Item extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.labelSmall?.copyWith(
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: actif ? FontWeight.w700 : FontWeight.w500,
               color: couleur,
             ),

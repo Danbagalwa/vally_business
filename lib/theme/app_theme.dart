@@ -225,30 +225,32 @@ class VallyTheme {
 
     // Échelle de texte compacte, adaptée au téléphone.
     final text = TextTheme(
+      // Échelle réduite (2026-11-19) : environ 1 à 2 points de moins,
+      // plancher à 10,5 px pour rester lisible.
       // Grand montant (chiffre principal d'un écran)
-      displaySmall: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.5, fontSize: 32, height: 38 / 32, color: ink, fontFeatures: _tabular),
+      displaySmall: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.5, fontSize: 28, height: 34 / 28, color: ink, fontFeatures: _tabular),
       // Titre d'écran mis en avant
-      headlineSmall: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.3, fontSize: 24, height: 30 / 24, color: ink),
+      headlineSmall: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.3, fontSize: 21, height: 27 / 21, color: ink),
       // Titre de barre d'application
-      titleLarge: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.3, fontSize: 22, height: 28 / 22, color: ink),
+      titleLarge: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.3, fontSize: 19, height: 24 / 19, color: ink),
       // Titres de section
-      titleMedium: TextStyle(fontFamily: _sans, fontSize: 16, height: 22 / 16, fontWeight: FontWeight.w600, color: ink),
+      titleMedium: TextStyle(fontFamily: _sans, fontSize: 15, height: 20 / 15, fontWeight: FontWeight.w600, color: ink),
       // Montants dans les listes
-      titleSmall: TextStyle(fontFamily: _sans, fontSize: 15, height: 20 / 15, fontWeight: FontWeight.w600, color: ink, fontFeatures: _tabular),
+      titleSmall: TextStyle(fontFamily: _sans, fontSize: 14, height: 19 / 14, fontWeight: FontWeight.w600, color: ink, fontFeatures: _tabular),
       // Corps
-      bodyLarge: TextStyle(fontFamily: _sans, fontSize: 15, height: 22 / 15, color: ink),
-      bodyMedium: TextStyle(fontFamily: _sans, fontSize: 14, height: 20 / 14, color: ink),
-      bodySmall: TextStyle(fontFamily: _sans, fontSize: 12, height: 16 / 12, color: inkMuted),
+      bodyLarge: TextStyle(fontFamily: _sans, fontSize: 14, height: 20 / 14, color: ink),
+      bodyMedium: TextStyle(fontFamily: _sans, fontSize: 13, height: 18 / 13, color: ink),
+      bodySmall: TextStyle(fontFamily: _sans, fontSize: 11.5, height: 15 / 11.5, color: inkMuted),
       // Libellés (boutons, pastilles)
-      labelLarge: TextStyle(fontFamily: _sans, fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600, color: ink),
-      labelMedium: TextStyle(fontFamily: _sans, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: ink),
-      labelSmall: TextStyle(fontFamily: _sans, fontSize: 11, height: 16 / 11, fontWeight: FontWeight.w500, color: inkMuted),
+      labelLarge: TextStyle(fontFamily: _sans, fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w600, color: ink),
+      labelMedium: TextStyle(fontFamily: _sans, fontSize: 11.5, height: 15 / 11.5, fontWeight: FontWeight.w500, color: ink),
+      labelSmall: TextStyle(fontFamily: _sans, fontSize: 10.5, height: 14 / 10.5, fontWeight: FontWeight.w500, color: inkMuted),
     );
 
     // Méthode de design : boutons 46 px rayon 12, champs remplis sans
     // bordure au repos (liseré rose 1,6 px au focus), AppBar fondue.
     final arrondi = RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.sm));
-    const texteBouton = TextStyle(fontFamily: _sans, fontSize: 14, fontWeight: FontWeight.w700);
+    const texteBouton = TextStyle(fontFamily: _sans, fontSize: 13, fontWeight: FontWeight.w700);
     const tailleBouton = Size(64, 46);
     const paddingBouton = EdgeInsets.symmetric(horizontal: 20);
     final clair = brightness == Brightness.light;
@@ -336,10 +338,10 @@ class VallyTheme {
         fillColor: fondChamp,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        labelStyle: TextStyle(color: inkMuted, fontSize: 14),
-        floatingLabelStyle: TextStyle(color: roseDeep, fontSize: 14, fontWeight: FontWeight.w600),
-        hintStyle: TextStyle(color: inkMuted, fontSize: 14),
-        helperStyle: TextStyle(color: inkMuted, fontSize: 12),
+        labelStyle: TextStyle(color: inkMuted, fontSize: 13),
+        floatingLabelStyle: TextStyle(color: roseDeep, fontSize: 13, fontWeight: FontWeight.w600),
+        hintStyle: TextStyle(color: inkMuted, fontSize: 13),
+        helperStyle: TextStyle(color: inkMuted, fontSize: 11.5),
         border: bordChamp,
         enabledBorder: bordChamp,
         disabledBorder: bordChamp,
@@ -352,8 +354,8 @@ class VallyTheme {
       chipTheme: ChipThemeData(
         backgroundColor: surfaceRaised,
         selectedColor: roseSoft,
-        labelStyle: TextStyle(fontFamily: _sans, fontSize: 13, color: ink, fontWeight: FontWeight.w500),
-        secondaryLabelStyle: TextStyle(fontFamily: _sans, fontSize: 13, color: roseDeep, fontWeight: FontWeight.w600),
+        labelStyle: TextStyle(fontFamily: _sans, fontSize: 12, color: ink, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: TextStyle(fontFamily: _sans, fontSize: 12, color: roseDeep, fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: 4),
         side: BorderSide(color: line),
         shape: const StadiumBorder(),
@@ -362,7 +364,7 @@ class VallyTheme {
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
           visualDensity: VisualDensity.compact,
-          textStyle: const TextStyle(fontFamily: _sans, fontSize: 13, fontWeight: FontWeight.w500),
+          textStyle: const TextStyle(fontFamily: _sans, fontSize: 12, fontWeight: FontWeight.w500),
           selectedBackgroundColor: roseSoft,
           selectedForegroundColor: roseDeep,
           side: BorderSide(color: line),
@@ -386,7 +388,7 @@ class VallyTheme {
         labelTextStyle: WidgetStateProperty.resolveWith(
           (s) => TextStyle(
             fontFamily: _sans,
-            fontSize: 11,
+            fontSize: 10.5,
             fontWeight: s.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
             color: s.contains(WidgetState.selected) ? roseDeep : inkMuted,
           ),
@@ -406,7 +408,7 @@ class VallyTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: surfaceRaised,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.md)),
-        titleTextStyle: text.titleMedium?.copyWith(fontSize: 18),
+        titleTextStyle: text.titleMedium?.copyWith(fontSize: 17),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
