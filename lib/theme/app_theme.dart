@@ -179,25 +179,36 @@ class VallyTheme {
       outlineVariant: line,
     );
 
+    // Échelle de texte compacte, adaptée au téléphone.
     final text = TextTheme(
-      // Grands montants du tableau de bord
-      displaySmall: TextStyle(fontFamily: _display, fontSize: 40, height: 44 / 40, color: ink, fontFeatures: _tabular),
-      // Titres d'écran
-      headlineSmall: TextStyle(fontFamily: _display, fontSize: 28, height: 34 / 28, color: ink),
+      // Grand montant (chiffre principal d'un écran)
+      displaySmall: TextStyle(fontFamily: _display, fontSize: 32, height: 38 / 32, color: ink, fontFeatures: _tabular),
+      // Titre d'écran mis en avant
+      headlineSmall: TextStyle(fontFamily: _display, fontSize: 24, height: 30 / 24, color: ink),
+      // Titre de barre d'application
+      titleLarge: TextStyle(fontFamily: _display, fontSize: 22, height: 28 / 22, color: ink),
       // Titres de section
-      titleMedium: TextStyle(fontFamily: _sans, fontSize: 18, height: 24 / 18, fontWeight: FontWeight.w600, color: ink),
+      titleMedium: TextStyle(fontFamily: _sans, fontSize: 16, height: 22 / 16, fontWeight: FontWeight.w600, color: ink),
       // Montants dans les listes
-      titleSmall: TextStyle(fontFamily: _sans, fontSize: 16, height: 24 / 16, fontWeight: FontWeight.w600, color: ink, fontFeatures: _tabular),
+      titleSmall: TextStyle(fontFamily: _sans, fontSize: 15, height: 20 / 15, fontWeight: FontWeight.w600, color: ink, fontFeatures: _tabular),
       // Corps
-      bodyLarge: TextStyle(fontFamily: _sans, fontSize: 16, height: 24 / 16, color: ink),
+      bodyLarge: TextStyle(fontFamily: _sans, fontSize: 15, height: 22 / 15, color: ink),
       bodyMedium: TextStyle(fontFamily: _sans, fontSize: 14, height: 20 / 14, color: ink),
-      // Libellés
-      labelLarge: TextStyle(fontFamily: _sans, fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w500, color: ink),
-      bodySmall: TextStyle(fontFamily: _sans, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: inkMuted),
-      labelSmall: TextStyle(fontFamily: _sans, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: inkMuted),
+      bodySmall: TextStyle(fontFamily: _sans, fontSize: 12, height: 16 / 12, color: inkMuted),
+      // Libellés (boutons, pastilles)
+      labelLarge: TextStyle(fontFamily: _sans, fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600, color: ink),
+      labelMedium: TextStyle(fontFamily: _sans, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: ink),
+      labelSmall: TextStyle(fontFamily: _sans, fontSize: 11, height: 16 / 11, fontWeight: FontWeight.w500, color: inkMuted),
     );
 
-    final rounded = RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.md));
+    final arrondi = RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.md));
+    const texteBouton = TextStyle(fontFamily: _sans, fontSize: 14, fontWeight: FontWeight.w600);
+    const tailleBouton = Size(64, 44);
+    const paddingBouton = EdgeInsets.symmetric(horizontal: 20);
+    final bordChamp = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(VallyRadius.sm),
+      borderSide: BorderSide(color: line),
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -207,12 +218,15 @@ class VallyTheme {
       textTheme: text,
       scaffoldBackgroundColor: surface,
       extensions: [extra],
+      visualDensity: VisualDensity.standard,
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
         foregroundColor: ink,
         elevation: 0,
         scrolledUnderElevation: 0,
-        titleTextStyle: text.headlineSmall,
+        centerTitle: false,
+        toolbarHeight: 56,
+        titleTextStyle: text.titleLarge,
       ),
       cardTheme: CardThemeData(
         color: surfaceRaised,
@@ -227,65 +241,120 @@ class VallyTheme {
         style: FilledButton.styleFrom(
           backgroundColor: rose,
           foregroundColor: onRose,
-          minimumSize: const Size.fromHeight(52),
-          shape: rounded,
-          textStyle: const TextStyle(fontFamily: _sans, fontSize: 16, fontWeight: FontWeight.w600),
+          minimumSize: tailleBouton,
+          padding: paddingBouton,
+          shape: arrondi,
+          textStyle: texteBouton,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: rose,
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: tailleBouton,
+          padding: paddingBouton,
           side: BorderSide(color: line),
-          shape: rounded,
-          textStyle: const TextStyle(fontFamily: _sans, fontSize: 16, fontWeight: FontWeight.w600),
+          shape: arrondi,
+          textStyle: texteBouton,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: rose,
+          minimumSize: const Size(48, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          textStyle: texteBouton,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: rose,
         foregroundColor: onRose,
         elevation: 2,
+        highlightElevation: 4,
         shape: const StadiumBorder(),
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 18),
+        extendedTextStyle: texteBouton,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceRaised,
-        contentPadding: const EdgeInsets.symmetric(horizontal: VallySpace.s4, vertical: 14),
-        labelStyle: TextStyle(color: inkMuted),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(VallyRadius.sm),
-          borderSide: BorderSide(color: inkMuted),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(VallyRadius.sm),
-          borderSide: BorderSide(color: inkMuted),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(VallyRadius.sm),
-          borderSide: BorderSide(color: rose, width: 2),
-        ),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        labelStyle: TextStyle(color: inkMuted, fontSize: 14),
+        floatingLabelStyle: TextStyle(color: roseDeep, fontSize: 14),
+        hintStyle: TextStyle(color: inkMuted, fontSize: 14),
+        helperStyle: TextStyle(color: inkMuted, fontSize: 12),
+        border: bordChamp,
+        enabledBorder: bordChamp,
+        focusedBorder: bordChamp.copyWith(borderSide: BorderSide(color: rose, width: 2)),
+        errorBorder: bordChamp.copyWith(borderSide: BorderSide(color: error)),
+        focusedErrorBorder: bordChamp.copyWith(borderSide: BorderSide(color: error, width: 2)),
+        prefixIconColor: inkMuted,
+        suffixIconColor: inkMuted,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surfaceRaised,
         selectedColor: roseSoft,
-        labelStyle: TextStyle(fontFamily: _sans, color: ink, fontWeight: FontWeight.w500),
+        labelStyle: TextStyle(fontFamily: _sans, fontSize: 13, color: ink, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: TextStyle(fontFamily: _sans, fontSize: 13, color: roseDeep, fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         side: BorderSide(color: line),
         shape: const StadiumBorder(),
+        showCheckmark: false,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          textStyle: const TextStyle(fontFamily: _sans, fontSize: 13, fontWeight: FontWeight.w500),
+          selectedBackgroundColor: roseSoft,
+          selectedForegroundColor: roseDeep,
+          side: BorderSide(color: line),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        minVerticalPadding: 8,
+        iconColor: inkMuted,
+        titleTextStyle: text.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+        subtitleTextStyle: text.bodySmall,
       ),
       navigationBarTheme: NavigationBarThemeData(
+        height: 64,
         backgroundColor: surfaceRaised,
         indicatorColor: roseSoft,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith(
-          (s) => IconThemeData(color: s.contains(WidgetState.selected) ? roseDeep : inkMuted),
+          (s) => IconThemeData(size: 22, color: s.contains(WidgetState.selected) ? roseDeep : inkMuted),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (s) => TextStyle(
             fontFamily: _sans,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontSize: 11,
+            fontWeight: s.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
             color: s.contains(WidgetState.selected) ? roseDeep : inkMuted,
           ),
         ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.sm)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surfaceRaised,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.md)),
+        titleTextStyle: text.titleMedium?.copyWith(fontSize: 18),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? onRose : inkMuted),
+        trackColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? rose : line),
       ),
       dividerTheme: DividerThemeData(color: line, thickness: 1, space: 1),
     );

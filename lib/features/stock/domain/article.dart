@@ -22,6 +22,7 @@ class Article {
     required this.totalApprovisionne,
     required this.valeurStockRestant,
     this.derniereVente,
+    this.pourEnfant = false,
   });
 
   final String id;
@@ -45,6 +46,9 @@ class Article {
   final double totalApprovisionne;
   final double valeurStockRestant;
   final DateTime? derniereVente;
+
+  /// Vêtement pour enfant (sinon adulte, par défaut).
+  final bool pourEnfant;
 
   bool get epuise => quantiteRestante <= 0;
   bool get stockFaible => !epuise && quantiteRestante <= seuilStockFaible;
@@ -75,6 +79,7 @@ class Article {
         derniereVente: json['derniere_vente'] == null
             ? null
             : FormatDate.lire(json['derniere_vente'] as String),
+        pourEnfant: json['pour_enfant'] as bool? ?? false,
       );
 }
 
@@ -91,6 +96,7 @@ class ArticleSaisie {
     required this.prixVenteHabituel,
     this.fournisseur,
     required this.dateAppro,
+    this.pourEnfant = false,
   });
 
   final String nom;
@@ -102,8 +108,10 @@ class ArticleSaisie {
   final double prixVenteHabituel;
   final String? fournisseur;
   final DateTime dateAppro;
+  final bool pourEnfant;
 
   Map<String, dynamic> toJson() => {
+        'pour_enfant': pourEnfant,
         'nom': nom.trim(),
         'categorie': categorie.trim(),
         'taille': taille.trim(),
@@ -161,17 +169,43 @@ class ResumeStock {
   }
 }
 
-/// Filtre de la liste : texte libre et catégorie.
+/// Adulte ou enfant (filtre du stock).
+enum Public {
+  tous('Tous'),
+  adulte('Adulte'),
+  enfant('Enfant');
+
+  const Public(this.libelle);
+
+  final String libelle;
+
+  bool garde(Article a) => switch (this) {
+        tous => true,
+        adulte => !a.pourEnfant,
+        enfant => a.pourEnfant,
+      };
+}
+
+/// Tailles proposées selon le public.
+const taillesAdulte = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unique'];
+const taillesEnfant = [
+  '0-3 mois', '3-6 mois', '6-12 mois', '12-18 mois', '2 ans', '3 ans',
+  '4 ans', '6 ans', '8 ans', '10 ans', '12 ans', '14 ans',
+];
+
+/// Filtre de la liste : texte libre, catégorie, adulte / enfant.
 List<Article> filtrerArticles(
   List<Article> articles, {
   String recherche = '',
   String? categorie,
+  Public public = Public.tous,
 }) {
   final mots = _normaliser(recherche)
       .split(' ')
       .where((m) => m.isNotEmpty)
       .toList();
   return articles.where((a) {
+    if (!public.garde(a)) return false;
     if (categorie != null && a.categorie != categorie) return false;
     if (mots.isEmpty) return true;
     final texte = _normaliser(

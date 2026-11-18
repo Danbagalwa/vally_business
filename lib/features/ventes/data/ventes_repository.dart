@@ -54,9 +54,10 @@ class VentesRepository {
     return lignes.map(Client.fromJson).toList();
   }
 
-  /// Crée client (si nouveau), commande, lignes et premier paiement en une
-  /// transaction (fonction SQL creer_commande). Retourne l'id de la commande.
+  /// Crée client (si nouveau), vente ou commande, lignes et premier
+  /// paiement en une transaction (fonction SQL creer_commande).
   Future<String> creer({
+    required TypeCommande type,
     required List<LignePanier> lignes,
     String? clientId,
     String? clientNom,
@@ -64,17 +65,36 @@ class VentesRepository {
     required DateTime date,
     String? note,
     PaiementSaisi? paiement,
+    Livraison? livraison,
   }) async {
     final id = await _client.rpc('creer_commande', params: {
       'p_lignes': lignes.map((l) => l.toJson()).toList(),
+      'p_type': type.code,
       'p_client_id': clientId,
       'p_client_nom': clientId == null ? clientNom : null,
       'p_client_telephone': clientId == null ? clientTelephone : null,
       'p_date': FormatDate.iso(date),
       'p_note': note,
       'p_paiement': paiement?.toJson(),
+      if (livraison != null) ...{
+        'p_date_livraison': FormatDate.iso(livraison.date),
+        'p_mode_remise': livraison.mode.code,
+        'p_adresse_livraison': livraison.adresse,
+        'p_frais_livraison': livraison.frais,
+      },
     });
     return id as String;
+  }
+
+  /// Change la date, le mode, l'adresse ou les frais d'une commande.
+  Future<void> modifierLivraison(String commandeId, Livraison livraison) async {
+    final estLivraison = livraison.mode == ModeRemise.livraison;
+    await _client.from('commandes').update({
+      'date_livraison': FormatDate.iso(livraison.date),
+      'mode_remise': livraison.mode.code,
+      'adresse_livraison': estLivraison ? livraison.adresse : null,
+      'frais_livraison': estLivraison ? livraison.frais : 0,
+    }).eq('id', commandeId);
   }
 
   Future<void> ajouterPaiement(String commandeId, PaiementSaisi paiement) async {
@@ -120,6 +140,23 @@ class PaiementSaisi {
         'devise_saisie': devise.code,
         'mode': mode.code,
       };
+}
+
+/// Remise d'une commande : date, retrait ou livraison (adresse, frais).
+class Livraison {
+  const Livraison({
+    required this.date,
+    required this.mode,
+    this.adresse,
+    this.frais = 0,
+  });
+
+  final DateTime date;
+  final ModeRemise mode;
+  final String? adresse;
+
+  /// Frais de livraison, en devise de référence.
+  final double frais;
 }
 
 final ventesRepositoryProvider = Provider<VentesRepository>(

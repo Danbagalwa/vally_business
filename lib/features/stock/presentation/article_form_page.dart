@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/widgets/champ_montant.dart';
+import '../../../core/widgets/elements.dart';
 import '../../../core/widgets/montant_texte.dart';
 import '../../../core/widgets/page_erreur.dart';
 import '../../../theme/app_theme.dart';
@@ -20,7 +21,6 @@ const _categoriesCourantes = [
   'Robe', 'Pantalon', 'Chemise', 'Jupe', 'Ensemble', 'Haut', 'Chaussures',
   'Sac', 'Accessoire',
 ];
-const _taillesCourantes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unique'];
 
 /// Ajout (articleId null) ou modification d'un article.
 class ArticleFormPage extends ConsumerWidget {
@@ -73,6 +73,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
       _quantite, _fournisseur;
   late final MontantSaisieController _prixAchat, _prixVente;
   late DateTime _dateAppro;
+  late bool _pourEnfant;
 
   Uint8List? _nouvellePhoto;
   bool _photoRetiree = false;
@@ -97,6 +98,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
     _prixVente = MontantSaisieController(
         devise: _boutique.devise, initial: a?.prixVenteHabituel);
     _dateAppro = a?.dateAppro ?? DateUtils.dateOnly(DateTime.now());
+    _pourEnfant = a?.pourEnfant ?? false;
   }
 
   @override
@@ -195,6 +197,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
       prixVenteHabituel: _enReference(_prixVente)!,
       fournisseur: _fournisseur.text,
       dateAppro: _dateAppro,
+      pourEnfant: _pourEnfant,
     );
     try {
       final id = _article?.id ?? await repo.ajouter(saisie);
@@ -274,18 +277,34 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
             ),
         ],
       ),
+      bottomNavigationBar: BarreAction(
+        libelle: _modification ? 'Enregistrer' : 'Ajouter au stock',
+        icone: Icons.check,
+        enCours: _enCours,
+        onPressed: _enregistrer,
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(VallySpace.s4),
+          padding: const EdgeInsets.fromLTRB(VallySpace.s4, VallySpace.s2, VallySpace.s4, VallySpace.s6),
           children: [
             if (article != null) ...[
               _CarteVentes(article: article, devise: _boutique.devise),
-              const SizedBox(height: VallySpace.s6),
+              const SizedBox(height: VallySpace.s4),
             ],
             Center(child: _photo(theme)),
-            const SizedBox(height: VallySpace.s6),
+            const SizedBox(height: VallySpace.s4),
             _Section('Article'),
+            Card(
+              child: SwitchListTile(
+                value: _pourEnfant,
+                onChanged: (v) => setState(() => _pourEnfant = v),
+                secondary: const Icon(Icons.child_care),
+                title: const Text('Article pour enfant'),
+                subtitle: Text(_pourEnfant ? 'Tailles en âge (2 ans, 6-12 mois…)' : 'Adulte'),
+              ),
+            ),
+            const SizedBox(height: VallySpace.s4),
             TextFormField(
               controller: _nom,
               textCapitalization: TextCapitalization.sentences,
@@ -308,7 +327,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
             _ChampAvecSuggestions(
               controller: _taille,
               label: 'Taille',
-              suggestions: _taillesCourantes,
+              suggestions: _pourEnfant ? taillesEnfant : taillesAdulte,
               validator: _obligatoire('Indique la taille (ou « Unique »).'),
             ),
             const SizedBox(height: VallySpace.s4),
@@ -391,15 +410,6 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
               ),
             ),
             const SizedBox(height: VallySpace.s6),
-            FilledButton(
-              onPressed: _enCours ? null : _enregistrer,
-              child: _enCours
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(_modification ? 'Enregistrer' : 'Ajouter au stock'),
-            ),
-            const SizedBox(height: VallySpace.s6),
           ],
         ),
       ),
@@ -445,7 +455,7 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: VallySpace.s4),
+      padding: const EdgeInsets.only(bottom: VallySpace.s2 + VallySpace.s1),
       child: Text(titre, style: Theme.of(context).textTheme.titleMedium),
     );
   }

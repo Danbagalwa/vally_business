@@ -14,7 +14,7 @@ import 'package:vally_business/features/ventes/domain/commande.dart';
 import 'package:vally_business/theme/app_theme.dart';
 
 import '../stock/donnees.dart';
-import '../ventes/commande_test.dart' show ligneVCommandes;
+import '../ventes/donnees_ventes.dart';
 
 /// La liste principale (et non la rangée horizontale des périodes).
 final _listeVerticale = find.byWidgetPredicate(

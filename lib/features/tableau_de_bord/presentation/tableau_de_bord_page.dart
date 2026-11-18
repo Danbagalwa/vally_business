@@ -4,7 +4,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/montant.dart';
 import '../../../core/router/routes.dart';
-import '../../../core/widgets/menu_compte.dart';
 import '../../../core/widgets/montant_texte.dart';
 import '../../../core/widgets/page_erreur.dart';
 import '../../../theme/app_theme.dart';
@@ -37,8 +36,8 @@ class TableauDeBordPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tableau de bord'),
-        actions: const [MenuCompte()],
+        title: const Text('Statistiques'),
+
       ),
       body: RefreshIndicator(
         onRefresh: rafraichir,
@@ -238,7 +237,7 @@ class _BlocActuel extends ConsumerWidget {
                       ),
                       const SizedBox(height: VallySpace.s2),
                       OutlinedButton.icon(
-                        onPressed: () => context.go(Routes.depenses),
+                        onPressed: () => context.push(Routes.depenses),
                         icon: const Icon(Icons.account_balance_wallet_outlined),
                         label: const Text('Me verser un bénéfice'),
                       ),

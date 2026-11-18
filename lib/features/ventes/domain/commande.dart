@@ -1,9 +1,23 @@
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 
-/// Statut de livraison (choisi par l'utilisateur).
+/// Vente au comptoir (remise tout de suite) ou commande (remise plus tard).
+enum TypeCommande {
+  vente('vente'),
+  commande('commande');
+
+  const TypeCommande(this.code);
+
+  final String code;
+
+  static TypeCommande depuisCode(String? code) =>
+      code == 'commande' ? commande : vente;
+}
+
+/// Où en est la remise des articles au client.
 enum StatutLivraison {
-  enAttente('en_attente', 'En attente'),
+  enAttente('en_attente', 'À préparer'),
+  prete('prete', 'Prête'),
   livree('livree', 'Livrée'),
   annulee('annulee', 'Annulée');
 
@@ -14,6 +28,19 @@ enum StatutLivraison {
 
   static StatutLivraison depuisCode(String code) =>
       values.firstWhere((s) => s.code == code);
+}
+
+enum ModeRemise {
+  retrait('retrait', 'Retrait en boutique'),
+  livraison('livraison', 'Livraison');
+
+  const ModeRemise(this.code, this.libelle);
+
+  final String code;
+  final String libelle;
+
+  static ModeRemise? depuisCode(String? code) =>
+      code == null ? null : values.firstWhere((m) => m.code == code);
 }
 
 /// Statut de paiement (calculé par la base).
@@ -48,10 +75,13 @@ enum ModePaiement {
 
 double _nombre(Object? v) => (v as num?)?.toDouble() ?? 0;
 
-/// Commande telle que lue dans la vue v_commandes (totaux calculés).
+DateTime _jour(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Vente ou commande, telle que lue dans la vue v_commandes.
 class Commande {
   const Commande({
     required this.id,
+    this.type = TypeCommande.vente,
     this.clientId,
     this.clientNom,
     this.clientTelephone,
@@ -60,6 +90,7 @@ class Commande {
     this.note,
     required this.nbPieces,
     required this.total,
+    required this.totalArticles,
     required this.cout,
     required this.benefice,
     required this.gainAuDessus,
@@ -68,18 +99,30 @@ class Commande {
     required this.resteAPayer,
     required this.statutPaiement,
     required this.creeLe,
+    this.dateLivraison,
+    this.modeRemise,
+    this.adresseLivraison,
+    this.fraisLivraison = 0,
   });
 
   final String id;
+  final TypeCommande type;
   final String? clientId;
   final String? clientNom;
   final String? clientTelephone;
+
+  /// Date de la vente / de la prise de commande.
   final DateTime date;
   final StatutLivraison statutLivraison;
   final String? note;
   final int nbPieces;
+
+  /// Ce que le client doit payer en tout (articles + frais de livraison).
   final double total;
+  final double totalArticles;
   final double cout;
+
+  /// Bénéfice sur les articles (les frais de livraison n'en font pas partie).
   final double benefice;
   final double gainAuDessus;
   final double coutRemises;
@@ -88,18 +131,34 @@ class Commande {
   final StatutPaiement statutPaiement;
   final DateTime creeLe;
 
-  bool get annulee => statutLivraison == StatutLivraison.annulee;
+  final DateTime? dateLivraison;
+  final ModeRemise? modeRemise;
+  final String? adresseLivraison;
+  final double fraisLivraison;
 
-  /// Écart total par rapport aux prix habituels (+ au-dessus, − remises).
+  bool get estCommande => type == TypeCommande.commande;
+  bool get annulee => statutLivraison == StatutLivraison.annulee;
+  bool get livree => statutLivraison == StatutLivraison.livree;
+
+  /// Commande pas encore remise au client (ni livrée, ni annulée).
+  bool get aLivrer => estCommande && !annulee && !livree;
+
+  bool estEnRetard(DateTime aujourdhui) =>
+      aLivrer && dateLivraison != null && dateLivraison!.isBefore(_jour(aujourdhui));
+
+  bool estPourLe(DateTime jour) =>
+      dateLivraison != null && _jour(dateLivraison!) == _jour(jour);
+
   double get ecartPrixHabituel => gainAuDessus - coutRemises;
 
   String get nomAffiche => clientNom ?? 'Client de passage';
 
-  /// Encore de l'argent à recevoir (commande non annulée).
+  /// Encore de l'argent à recevoir (non annulée).
   bool get aEncaisser => !annulee && resteAPayer > 0;
 
   factory Commande.fromJson(Map<String, dynamic> json) => Commande(
         id: json['id'] as String,
+        type: TypeCommande.depuisCode(json['type'] as String?),
         clientId: json['client_id'] as String?,
         clientNom: json['client_nom'] as String?,
         clientTelephone: json['client_telephone'] as String?,
@@ -109,6 +168,9 @@ class Commande {
         note: json['note'] as String?,
         nbPieces: (json['nb_pieces'] as num?)?.toInt() ?? 0,
         total: _nombre(json['total']),
+        totalArticles: json.containsKey('total_articles')
+            ? _nombre(json['total_articles'])
+            : _nombre(json['total']),
         cout: _nombre(json['cout']),
         benefice: _nombre(json['benefice']),
         gainAuDessus: _nombre(json['gain_au_dessus']),
@@ -118,10 +180,16 @@ class Commande {
         statutPaiement:
             StatutPaiement.depuisCode(json['statut_paiement'] as String),
         creeLe: DateTime.parse(json['created_at'] as String).toLocal(),
+        dateLivraison: json['date_livraison'] == null
+            ? null
+            : FormatDate.lire(json['date_livraison'] as String),
+        modeRemise: ModeRemise.depuisCode(json['mode_remise'] as String?),
+        adresseLivraison: json['adresse_livraison'] as String?,
+        fraisLivraison: _nombre(json['frais_livraison']),
       );
 }
 
-/// Ligne d'une commande (prix figés au moment de la vente).
+/// Ligne d'une vente ou commande (prix figés au moment de la vente).
 class LigneCommande {
   const LigneCommande({
     required this.id,
@@ -186,8 +254,6 @@ class Paiement {
   final double montant;
   final DateTime date;
   final ModePaiement mode;
-
-  /// Ce que le client a réellement donné.
   final Devise deviseSaisie;
   final double montantSaisi;
   final double? tauxChange;
@@ -219,7 +285,7 @@ class Client {
       );
 }
 
-/// Commande avec ses lignes et ses paiements (écran de détail).
+/// Vente ou commande avec ses lignes et ses paiements (écran de détail).
 class CommandeDetail {
   const CommandeDetail({
     required this.commande,
@@ -232,12 +298,12 @@ class CommandeDetail {
   final List<Paiement> paiements;
 }
 
-/// Filtres de la liste des ventes.
+// ─── Filtres ──────────────────────────────────────────────────────────
+
+/// Filtres de l'onglet Ventes (ventes au comptoir).
 enum FiltreVentes {
   toutes('Toutes'),
-  aEncaisser('À encaisser'),
-  soldees('Soldées'),
-  aLivrer('À livrer'),
+  nonPayees('Non payées'),
   annulees('Annulées');
 
   const FiltreVentes(this.libelle);
@@ -246,24 +312,95 @@ enum FiltreVentes {
 
   bool garde(Commande c) => switch (this) {
         toutes => true,
-        aEncaisser => c.aEncaisser,
-        soldees => !c.annulee && c.statutPaiement == StatutPaiement.soldee,
-        aLivrer => c.statutLivraison == StatutLivraison.enAttente,
+        nonPayees => c.aEncaisser,
         annulees => c.annulee,
       };
 }
 
-/// Filtre texte (client, téléphone) + filtre de statut.
-List<Commande> filtrerCommandes(
-  List<Commande> commandes, {
+/// Filtres de l'onglet Commandes (selon la date de livraison).
+enum FiltreCommandes {
+  aujourdhui('Aujourd’hui'),
+  enRetard('En retard'),
+  aVenir('À venir'),
+  livrees('Livrées'),
+  annulees('Annulées');
+
+  const FiltreCommandes(this.libelle);
+
+  final String libelle;
+
+  bool garde(Commande c, DateTime maintenant) {
+    final jour = _jour(maintenant);
+    final date = c.dateLivraison == null ? null : _jour(c.dateLivraison!);
+    return switch (this) {
+      aujourdhui => c.aLivrer && date == jour,
+      enRetard => c.estEnRetard(jour),
+      aVenir => c.aLivrer && date != null && date.isAfter(jour),
+      livrees => c.livree,
+      annulees => c.annulee,
+    };
+  }
+}
+
+bool _correspond(Commande c, String recherche) {
+  final r = recherche.trim().toLowerCase();
+  if (r.isEmpty) return true;
+  return c.nomAffiche.toLowerCase().contains(r) ||
+      (c.clientTelephone ?? '')
+          .replaceAll(' ', '')
+          .contains(r.replaceAll(' ', ''));
+}
+
+/// Ventes au comptoir filtrées, les plus récentes d'abord.
+List<Commande> filtrerVentes(
+  List<Commande> toutes, {
   FiltreVentes filtre = FiltreVentes.toutes,
   String recherche = '',
+}) =>
+    toutes
+        .where((c) => !c.estCommande && filtre.garde(c) && _correspond(c, recherche))
+        .toList();
+
+/// Commandes filtrées, triées par date de livraison (les plus proches
+/// d'abord ; livrées et annulées : les plus récentes d'abord).
+/// Si [jour] est donné, toutes les commandes à livrer ce jour-là.
+List<Commande> filtrerCommandes(
+  List<Commande> toutes, {
+  required DateTime aujourdhui,
+  FiltreCommandes filtre = FiltreCommandes.aujourdhui,
+  DateTime? jour,
+  String recherche = '',
 }) {
-  final r = recherche.trim().toLowerCase();
-  return commandes.where((c) {
-    if (!filtre.garde(c)) return false;
-    if (r.isEmpty) return true;
-    return c.nomAffiche.toLowerCase().contains(r) ||
-        (c.clientTelephone ?? '').replaceAll(' ', '').contains(r.replaceAll(' ', ''));
+  final liste = toutes.where((c) {
+    if (!c.estCommande || !_correspond(c, recherche)) return false;
+    if (jour != null) return c.estPourLe(jour) && !c.annulee;
+    return filtre.garde(c, aujourdhui);
   }).toList();
+  final recentes =
+      filtre == FiltreCommandes.livrees || filtre == FiltreCommandes.annulees;
+  liste.sort((a, b) {
+    final da = a.dateLivraison ?? a.date, db = b.dateLivraison ?? b.date;
+    return recentes && jour == null ? db.compareTo(da) : da.compareTo(db);
+  });
+  return liste;
+}
+
+/// Nombre de commandes par filtre (pour les pastilles).
+Map<FiltreCommandes, int> compterCommandes(
+        List<Commande> toutes, DateTime aujourdhui) =>
+    {
+      for (final f in FiltreCommandes.values)
+        f: toutes.where((c) => c.estCommande && f.garde(c, aujourdhui)).length,
+    };
+
+/// Regroupe par jour en gardant l'ordre de la liste.
+Map<DateTime, List<Commande>> grouperParJour(
+  List<Commande> liste,
+  DateTime Function(Commande) date,
+) {
+  final groupes = <DateTime, List<Commande>>{};
+  for (final c in liste) {
+    groupes.putIfAbsent(_jour(date(c)), () => []).add(c);
+  }
+  return groupes;
 }

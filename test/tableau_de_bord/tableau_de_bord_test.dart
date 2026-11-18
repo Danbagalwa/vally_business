@@ -6,7 +6,7 @@ import 'package:vally_business/features/tableau_de_bord/domain/periode.dart';
 import 'package:vally_business/features/ventes/domain/commande.dart';
 
 import '../stock/donnees.dart';
-import '../ventes/commande_test.dart' show ligneVCommandes;
+import '../ventes/donnees_ventes.dart';
 
 final _aujourdhui = DateTime(2026, 11, 18);
 

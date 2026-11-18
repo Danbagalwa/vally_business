@@ -53,8 +53,11 @@ void main() {
     expect(find.text('Ajouter un article'), findsOneWidget);
   });
 
-  testWidgets('liste : résumé, alertes de stock, filtre et recherche',
+  testWidgets('liste : résumé, alertes, filtres catégorie / enfant, recherche',
       (tester) async {
+    final pyjama = Article.fromJson(
+        ligneVStock(nom: 'Pyjama ourson', categorie: 'Ensemble', taille: '2 ans', quantiteAchetee: 3)
+          ..['pour_enfant'] = true);
     await _ouvrirStock(tester, [
       article(nom: 'Robe pagne fleurie', quantiteAchetee: 5, quantiteVendue: 3),
       article(
@@ -63,21 +66,33 @@ void main() {
           quantiteAchetee: 2,
           quantiteVendue: 2),
       article(nom: 'Robe de soirée', quantiteAchetee: 4, quantiteVendue: 0),
+      pyjama,
     ]);
 
-    // Valeur restante : (2 + 0 + 4) × 10 000 = 60 000 CDF.
-    expect(find.text('60 000 CDF'), findsOneWidget);
+    // Valeur restante : (2 + 0 + 4 + 3) × 10 000 = 90 000 CDF.
+    expect(find.text('90 000 CDF'), findsOneWidget);
     expect(find.text('Plus que 2 en stock'), findsOneWidget);
     expect(find.text('Épuisé'), findsOneWidget);
     expect(find.text('4 / 4 en stock'), findsOneWidget);
     expect(find.text('1 épuisé · 1 bientôt épuisé'), findsOneWidget);
+    expect(find.text('Enfant'), findsWidgets);
 
+    await tester.tap(find.widgetWithText(FilterChip, 'Enfant'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pyjama ourson'), findsOneWidget);
+    expect(find.text('Robe de soirée'), findsNothing);
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Tous'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilterChip, 'Chemise'));
     await tester.pumpAndSettle();
     expect(find.text('Chemise wax'), findsOneWidget);
     expect(find.text('Robe de soirée'), findsNothing);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Tous'));
+    // Retaper la catégorie active la retire.
+    await tester.tap(find.widgetWithText(FilterChip, 'Chemise'));
+    await tester.tap(find.byTooltip('Rechercher'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'soiree');
     await tester.pumpAndSettle();
     expect(find.text('Robe de soirée'), findsOneWidget);
