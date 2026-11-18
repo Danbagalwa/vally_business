@@ -112,7 +112,8 @@ class _Fiche extends ConsumerWidget {
     final theme = Theme.of(context);
     final devise = ref.watch(boutiqueActiveProvider).devise;
     final c = client;
-    final impayes = achats.where((a) => a.aEncaisser).toList();
+    final impayes = achats.where((a) => a.aEncaisser && a.comptee).toList();
+    final enCours = achats.where((a) => a.enCours).toList();
     final rappel = c.doit
         ? 'Bonjour ${c.nom}, petit rappel de Vally Business : il reste '
             '${FormatMontant.formater(c.totalDu, devise)} à régler. Merci.'
@@ -213,6 +214,33 @@ class _Fiche extends ConsumerWidget {
                           minimumSize: const Size(40, 36), visualDensity: VisualDensity.compact),
                       child: const Text('Encaisser'),
                     ),
+                  ),
+                ],
+              ]),
+            ),
+          ],
+          if (enCours.isNotEmpty) ...[
+            const SizedBox(height: VallySpace.s6),
+            const EnTeteSection('Commandes en cours',
+                sousTitre: 'Pas encore des ventes : comptées une fois payées ou livrées'),
+            Card(
+              child: Column(children: [
+                for (final (i, a) in enCours.indexed) ...[
+                  if (i > 0) const Divider(),
+                  ListTile(
+                    onTap: () => context.push(Routes.commande(a.id)),
+                    leading: const Icon(Icons.inventory_outlined),
+                    title: TexteAvecMontants([
+                      spanMontant(context, a.total, devise, gras: true),
+                      if (a.totalPaye > 0) ...[
+                        ' · avance ',
+                        spanMontant(context, a.totalPaye, devise, sens: SensMontant.positif),
+                      ],
+                    ], style: theme.textTheme.bodyMedium, maxLines: 1),
+                    subtitle: Text(a.dateLivraison == null
+                        ? 'Commande du ${FormatDate.court(a.date)}'
+                        : 'À livrer ${FormatDate.relatif(a.dateLivraison!).toLowerCase()}'),
+                    trailing: PastilleLivraison(statut: a.statutLivraison),
                   ),
                 ],
               ]),

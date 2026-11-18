@@ -1,6 +1,7 @@
 import '../../ventes/domain/commande.dart';
 
-/// Ventes et commandes d'une période (annulées exclues), pour l'accueil.
+/// Ventes d'une période pour l'accueil : annulées et commandes en cours
+/// (ni payées, ni livrées) exclues.
 class ResumePeriode {
   const ResumePeriode({required this.nbVentes, required this.totalVendu, required this.benefice});
 
@@ -13,7 +14,7 @@ class ResumePeriode {
     var n = 0;
     var total = 0.0, benefice = 0.0;
     for (final c in commandes) {
-      if (c.annulee || !garde(c.date)) continue;
+      if (!c.comptee || !garde(c.date)) continue;
       n++;
       total += c.totalArticles;
       benefice += c.benefice;

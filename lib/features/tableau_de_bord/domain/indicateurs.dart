@@ -145,7 +145,7 @@ List<PointMensuel> parMois(
   final ca = {for (final m in mois) m: 0.0};
   final benef = {for (final m in mois) m: 0.0};
   for (final c in commandes) {
-    if (c.annulee) continue;
+    if (!c.comptee) continue; // ni annulée, ni commande en cours
     final m = DateTime(c.date.year, c.date.month);
     if (!ca.containsKey(m)) continue;
     ca[m] = ca[m]! + c.total;

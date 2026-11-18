@@ -265,16 +265,44 @@ await expectOk('statut « prête »', () => as(A,
   (r) => r[0].statut_livraison === 'prete');
 await expectErr('une commande doit garder sa date de livraison', () => as(A,
   `update commandes set date_livraison = null where id = $1`, [cmdLivree.id]));
-await expectOk('v_clients : Mme Kabila doit 11 000 (1 impayé)', () => as(A,
-  `select * from v_clients where nom = 'Mme Kabila'`),
-  (r) => Number(r[0].total_du) === 11000 && r[0].nb_impayes === 1 && r[0].nb_achats === 1 && Number(r[0].total_achats) === 21000);
+const qteEnfantVendue = async () => {
+  const r = await as(A, `select quantite from articles_vendus_periode('2000-01-01', '2100-01-01') where nom = 'Ensemble garçon'`);
+  return r.length ? r[0].quantite : 0;
+};
+await expectOk('commande en cours (avance seulement) : pas une vente', async () => [
+  ...(await as(A, `select comptee from v_commandes where id = $1`, [cmdLivree.id])),
+  ...(await as(A, `select total_du, nb_achats from v_clients where nom = 'Mme Kabila'`)),
+], (r) => r[0].comptee === false && Number(r[1].total_du) === 0 && r[1].nb_achats === 0);
+await expectOk('… absente des articles vendus (seule la vente au comptoir compte : 1)', () => qteEnfantVendue(), (q) => q === 1);
+await expectOk('… mais son stock reste réservé (7 restantes)', () => as(A,
+  `select quantite_restante from v_stock where id = $1`, [enfant.id]), (r) => r[0].quantite_restante === 7);
+const caAvant = Number((await as(A, `select chiffre_affaires from v_dashboard`))[0].chiffre_affaires);
+await expectOk('livrée : devient une vente, Mme Kabila doit 11 000', async () => {
+  await as(A, `update commandes set statut_livraison = 'livree' where id = $1`, [cmdLivree.id]);
+  return [
+    ...(await as(A, `select comptee from v_commandes where id = $1`, [cmdLivree.id])),
+    ...(await as(A, `select * from v_clients where nom = 'Mme Kabila'`)),
+    ...(await as(A, `select chiffre_affaires from v_dashboard`)),
+  ];
+}, (r) => r[0].comptee === true && Number(r[1].total_du) === 11000 && r[1].nb_impayes === 1
+  && r[1].nb_achats === 1 && Number(r[1].total_achats) === 21000
+  && Number(r[2].chiffre_affaires) === caAvant + 21000);
+await expectOk('… et dans les articles vendus (1 + 2 = 3)', () => qteEnfantVendue(), (q) => q === 3);
+const [cmdPayee] = await expectOk('commande payée en entier mais pas encore livrée', () => as(A,
+  `select creer_commande($1::jsonb, p_type => 'commande', p_client_nom => 'M. Tshala',
+     p_date_livraison => '2026-12-01',
+     p_paiement => '{"montant_saisi": 9000, "devise_saisie": "CDF", "mode": "especes"}'::jsonb) as id`,
+  [JSON.stringify([{ article_id: enfant.id, quantite: 1, prix_vendu: 9000 }])]));
+await expectOk('… comptée comme vendue (payée = vendue)', () => as(A,
+  `select comptee, statut_livraison from v_commandes where id = $1`, [cmdPayee.id]),
+  (r) => r[0].comptee === true && r[0].statut_livraison === 'en_attente');
 await expectOk('annuler la commande : plus de dette, stock rendu', async () => {
   await as(A, `update commandes set statut_livraison = 'annulee' where id = $1`, [cmdLivree.id]);
   return [
     ...(await as(A, `select total_du from v_clients where nom = 'Mme Kabila'`)),
     ...(await as(A, `select quantite_restante from v_stock where id = $1`, [enfant.id])),
   ];
-}, (r) => Number(r[0].total_du) === 0 && r[1].quantite_restante === 9);
+}, (r) => Number(r[0].total_du) === 0 && r[1].quantite_restante === 8);
 await expectOk('C ne voit pas les clients de Vally', () => as(C, `select * from v_clients`), (r) => r.length === 0);
 
 console.log(`\n${ok} réussis, ${ko} échoués`);

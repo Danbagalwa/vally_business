@@ -589,7 +589,7 @@ class _CarteVentes extends StatelessWidget {
         padding: const EdgeInsets.all(VallySpace.s4),
         child: Row(
           children: [
-            bloc('Vendu', Text('${article.quantiteVendue}', style: chiffres)),
+            bloc('Vendu ou réservé', Text('${article.quantiteVendue}', style: chiffres)),
             bloc('Restant', Text('${article.quantiteRestante}', style: chiffres)),
             bloc('Valeur restante',
                 MontantTexte(article.valeurStockRestant, devise: devise)),

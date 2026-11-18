@@ -397,11 +397,26 @@ class _Totaux extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TexteAvecMontants([
-              'Bénéfice ',
+              c.enCours ? 'Bénéfice prévu ' : 'Bénéfice ',
               spanMontant(context, c.benefice.abs(), devise,
                   sens: c.benefice >= 0 ? SensMontant.positif : SensMontant.negatif, gras: true),
             ]),
           ),
+          if (c.enCours)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.info_outline, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Commande en cours : elle comptera dans tes ventes une fois '
+                    'payée en entier ou livrée.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ]),
+            ),
           Align(
             alignment: Alignment.centerLeft,
             child: TexteEcart(ecart: c.ecartPrixHabituel, devise: devise),

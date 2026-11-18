@@ -101,10 +101,23 @@ void main() {
       expect(g.keys, [DateTime(2026, 11, 19), DateTime(2026, 11, 25)]);
     });
 
-    test('résumé du jour : annulées exclues, frais hors chiffre', () {
+    test('commande en cours (ni payée en entier, ni livrée) : pas une vente', () {
+      Commande c(String id) => toutes.firstWhere((x) => x.id == id);
+      expect(c('v1').comptee, isTrue, reason: 'vente au comptoir, même à crédit');
+      expect(c('k-auj').comptee, isFalse, reason: 'commande avec avance seulement');
+      expect(c('k-auj').enCours, isTrue);
+      expect(c('k-livree').comptee, isTrue, reason: 'livrée');
+      expect(c('k-annulee').comptee, isFalse);
+      final payee = _c(ligneVCommandes(
+          type: 'commande', statutLivraison: 'en_attente', statutPaiement: 'soldee',
+          paye: 22000, dateLivraison: '2026-11-25', modeRemise: 'retrait'));
+      expect(payee.comptee, isTrue, reason: 'payée en entier');
+    });
+
+    test('résumé du jour : seulement les ventes comptées', () {
       final r = ResumePeriode.du(toutes, (d) => d == DateTime(2026, 11, 18));
-      expect(r.nbVentes, 7);
-      expect(r.totalVendu, 7 * 22000);
+      expect(r.nbVentes, 3); // v1, v2, k-livree
+      expect(r.totalVendu, 3 * 22000);
     });
   });
 

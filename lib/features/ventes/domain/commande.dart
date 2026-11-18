@@ -143,6 +143,15 @@ class Commande {
   /// Commande pas encore remise au client (ni livrée, ni annulée).
   bool get aLivrer => estCommande && !annulee && !livree;
 
+  /// Compte comme une vente (totaux, bénéfice, dettes) : vente au comptoir,
+  /// ou commande payée en entier ou livrée. Même règle que la colonne
+  /// `comptee` de v_commandes.
+  bool get comptee =>
+      !annulee && (!estCommande || livree || (totalPaye > 0 && totalPaye >= total));
+
+  /// Commande prise mais pas encore vendue (ni payée en entier, ni livrée).
+  bool get enCours => estCommande && !annulee && !comptee;
+
   bool estEnRetard(DateTime aujourdhui) =>
       aLivrer && dateLivraison != null && dateLivraison!.isBefore(_jour(aujourdhui));
 
