@@ -6,20 +6,19 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/connexion_page.dart';
+import '../../features/boutique/presentation/ma_boutique_page.dart';
+import '../../features/boutique/presentation/porte_boutique.dart';
 import '../../features/depenses/presentation/depenses_page.dart';
+import '../../features/stock/presentation/article_form_page.dart';
 import '../../features/stock/presentation/stock_page.dart';
 import '../../features/tableau_de_bord/presentation/tableau_de_bord_page.dart';
 import '../../features/ventes/presentation/ventes_page.dart';
 import 'coquille_onglets.dart';
+import 'routes.dart';
 
-/// Chemins de l'application.
-abstract final class Routes {
-  static const connexion = '/connexion';
-  static const stock = '/stock';
-  static const ventes = '/ventes';
-  static const tableauDeBord = '/tableau-de-bord';
-  static const depenses = '/depenses';
-}
+export 'routes.dart';
+
+final _racineKey = GlobalKey<NavigatorState>(debugLabel: 'racine');
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authRepositoryProvider);
@@ -27,6 +26,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(rafraichir.dispose);
 
   final router = GoRouter(
+    navigatorKey: _racineKey,
     initialLocation: Routes.stock,
     refreshListenable: rafraichir,
     redirect: (context, state) {
@@ -40,14 +40,36 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.connexion,
         builder: (context, state) => const ConnexionPage(),
       ),
+      // Écrans plein écran (sans barre d'onglets), derrière la PorteBoutique.
+      GoRoute(
+        path: Routes.maBoutique,
+        builder: (context, state) =>
+            const PorteBoutique(child: MaBoutiquePage()),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) =>
-            CoquilleOnglets(navigationShell: shell),
+            PorteBoutique(child: CoquilleOnglets(navigationShell: shell)),
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
               path: Routes.stock,
               builder: (context, state) => const StockPage(),
+              routes: [
+                GoRoute(
+                  path: 'nouveau',
+                  parentNavigatorKey: _racineKey,
+                  builder: (context, state) =>
+                      const PorteBoutique(child: ArticleFormPage()),
+                ),
+                GoRoute(
+                  path: ':id',
+                  parentNavigatorKey: _racineKey,
+                  builder: (context, state) => PorteBoutique(
+                    child: ArticleFormPage(
+                        articleId: state.pathParameters['id']),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [

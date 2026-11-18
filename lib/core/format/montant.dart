@@ -10,6 +10,12 @@ enum Devise {
 
   final String code;
   final int decimales;
+
+  static Devise depuisCode(String code) =>
+      Devise.values.firstWhere((d) => d.code == code);
+
+  /// L'autre devise (CDF ↔ USD).
+  Devise get autre => this == Devise.cdf ? Devise.usd : Devise.cdf;
 }
 
 /// Sens d'un montant, pour choisir le signe affiché.
@@ -57,6 +63,25 @@ abstract final class FormatMontant {
     };
     return '$signe$valeur$_espace${devise.code}';
   }
+
+  /// Lit un montant saisi : « 15 000 », « 12,5 », « 12.50 » → nombre.
+  /// Retourne null si la saisie est vide ou invalide.
+  static double? lire(String saisie) {
+    final propre = saisie
+        .replaceAll(RegExp(r'[\s  ]'), '')
+        .replaceAll(',', '.');
+    if (propre.isEmpty) return null;
+    return double.tryParse(propre);
+  }
+
+  /// Valeur à pré-remplir dans un champ : « 15000 », « 12,50 ».
+  static String pourSaisie(num montant, Devise devise) {
+    if (devise.decimales == 0) return montant.round().toString();
+    return montant.toStringAsFixed(devise.decimales).replaceAll('.', ',');
+  }
+
+  /// Arrondi à 2 décimales (précision des colonnes numeric(14,2)).
+  static double arrondir(num montant) => (montant * 100).round() / 100;
 
   /// Conversion selon un taux « 1 USD = [tauxUsdVersCdf] CDF ».
   static num convertir(

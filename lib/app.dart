@@ -16,10 +16,16 @@ class VallyApp extends ConsumerWidget {
       theme: VallyTheme.light,
       darkTheme: VallyTheme.dark,
       themeMode: ThemeMode.system,
+      locale: localeVally,
+      supportedLocales: const [localeVally],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: ref.watch(routerProvider),
     );
   }
 }
+
+/// L'interface est en français (sélecteur de date, boutons système…).
+const localeVally = Locale('fr', 'FR');
 
 /// Affichée si l'appli est lancée sans les clés Supabase.
 class ConfigurationManquanteApp extends StatelessWidget {

@@ -53,3 +53,11 @@ class AuthRepository {
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.watch(supabaseClientProvider)),
 );
+
+/// Identifiant du compte connecté (null si déconnecté). Change à chaque
+/// connexion / déconnexion : les données dépendantes se rechargent.
+final utilisateurIdProvider = StreamProvider<String?>((ref) async* {
+  final auth = ref.watch(authRepositoryProvider);
+  yield auth.utilisateurActuel?.id;
+  yield* auth.changements.map((etat) => etat.session?.user.id).distinct();
+});
