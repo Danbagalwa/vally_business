@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../features/accueil/presentation/accueil_page.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/connexion_page.dart';
+import '../../features/boutique/presentation/calculateur_page.dart';
 import '../../features/boutique/presentation/ma_boutique_page.dart';
 import '../../features/boutique/presentation/porte_boutique.dart';
 import '../../features/clients/domain/client_resume.dart';
@@ -57,6 +58,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ConnexionPage(),
       ),
       _pleinEcran(Routes.maBoutique, (_) => const MaBoutiquePage()),
+      _pleinEcran(Routes.calculateur, (_) => const CalculateurPage()),
       _pleinEcran(Routes.statistiques, (_) => const TableauDeBordPage()),
       _pleinEcran(Routes.depenses, (_) => const DepensesPage()),
       _pleinEcran(

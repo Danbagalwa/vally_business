@@ -201,6 +201,10 @@ class _CommandeDetailPageState extends ConsumerState<CommandeDetailPage> {
                       sens: SensMontant.negatif,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                  EquivalentDevise(
+                      montant: c.resteAPayer,
+                      deviseReference: devise,
+                      tauxUsdVersCdf: boutique.tauxUsdCdf),
                 ],
               ),
             )

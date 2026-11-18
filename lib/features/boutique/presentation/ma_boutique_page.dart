@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
+import '../../../core/widgets/calculateur_devises.dart';
 import '../../../core/widgets/page_erreur.dart';
 import '../../../theme/app_theme.dart';
 import '../data/boutique_repository.dart';
@@ -143,6 +144,21 @@ class _MaBoutiquePageState extends ConsumerState<MaBoutiquePage> {
                       child: const Text('Enregistrer'),
                     ),
                   ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: VallySpace.s6),
+          Text('Calculateur', style: theme.textTheme.titleMedium),
+          const SizedBox(height: VallySpace.s2),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              // Suit le taux en cours de saisie, avant même d'enregistrer.
+              child: ListenableBuilder(
+                listenable: _taux,
+                builder: (context, _) => CalculateurDevises(
+                  tauxUsdVersCdf: FormatMontant.lire(_taux.text) ?? boutique.tauxUsdCdf,
                 ),
               ),
             ),

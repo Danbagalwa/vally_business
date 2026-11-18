@@ -76,6 +76,13 @@ class PlusPage extends ConsumerWidget {
               ),
               const Divider(indent: 56),
               entree(
+                icone: Icons.currency_exchange,
+                titre: 'Calculateur de devises',
+                sousTitre: 'Dollars ⇄ francs au taux du jour',
+                onTap: () => context.push(Routes.calculateur),
+              ),
+              const Divider(indent: 56),
+              entree(
                 icone: Icons.account_balance_wallet_outlined,
                 titre: 'Mes dépenses',
                 sousTitre: 'Séparé de la boutique',
@@ -90,7 +97,7 @@ class PlusPage extends ConsumerWidget {
               entree(
                 icone: Icons.storefront_outlined,
                 titre: 'Ma boutique',
-                sousTitre: 'Taux de change, membres',
+                sousTitre: 'Taux de change, calculateur, membres',
                 onTap: () => context.push(Routes.maBoutique),
               ),
               const Divider(indent: 56),

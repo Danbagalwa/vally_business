@@ -18,6 +18,8 @@ enum Devise {
   Devise get autre => this == Devise.cdf ? Devise.usd : Devise.cdf;
 }
 
+enum ArrondiDevise { proche, haut, bas }
+
 /// Sens d'un montant, pour choisir le signe affiché.
 enum SensMontant {
   /// Montant neutre : pas de signe.
@@ -82,6 +84,23 @@ abstract final class FormatMontant {
 
   /// Arrondi à 2 décimales (précision des colonnes numeric(14,2)).
   static double arrondir(num montant) => (montant * 100).round() / 100;
+
+  /// Arrondi à la précision de la devise (CDF : unité, USD : centime).
+  /// [ArrondiDevise.haut] pour un montant à payer (le client ne reste
+  /// jamais débiteur de quelques francs), [ArrondiDevise.bas] pour un
+  /// plafond (on ne dépasse jamais le disponible).
+  static double arrondirPour(num montant, Devise devise,
+      [ArrondiDevise mode = ArrondiDevise.proche]) {
+    final f = devise.decimales == 0 ? 1 : 100;
+    final v = montant * f;
+    // Petite marge pour les erreurs de virgule flottante (10.000000001).
+    final r = switch (mode) {
+      ArrondiDevise.proche => v.round(),
+      ArrondiDevise.haut => (v - 1e-6).ceil(),
+      ArrondiDevise.bas => (v + 1e-6).floor(),
+    };
+    return r / f;
+  }
 
   /// Conversion selon un taux « 1 USD = [tauxUsdVersCdf] CDF ».
   static num convertir(

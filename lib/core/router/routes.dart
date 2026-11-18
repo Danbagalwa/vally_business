@@ -25,4 +25,5 @@ abstract final class Routes {
   static const statistiques = '/statistiques';
   static const depenses = '/depenses';
   static const maBoutique = '/boutique';
+  static const calculateur = '/calculateur';
 }

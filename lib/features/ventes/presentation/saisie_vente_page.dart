@@ -81,19 +81,12 @@ class _SaisieVentePageState extends ConsumerState<SaisieVentePage> {
   // Paiement
   late _Reglement _reglement = _commande ? _Reglement.rien : _Reglement.tout;
   late final MontantSaisieController _paiement = MontantSaisieController(devise: _boutique.devise);
-  bool _paiementModifie = false;
   ModePaiement _modePaiement = ModePaiement.especes;
 
   final _note = TextEditingController();
   bool _noteVisible = false;
   DateTime _date = DateUtils.dateOnly(DateTime.now());
   bool _enCours = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _paiement.texte.addListener(() => _paiementModifie = true);
-  }
 
   @override
   void dispose() {
@@ -121,13 +114,17 @@ class _SaisieVentePageState extends ConsumerState<SaisieVentePage> {
 
   double get _aPayer => _totaux.total + _fraisLivraison;
 
-  /// « Tout payé » : le montant suit le total tant qu'on ne l'a pas modifié.
+  /// « Tout payé » : le montant suit le total (dans la devise choisie, CDF
+  /// ou USD) tant qu'on ne l'a pas modifié à la main. Arrondi vers le haut
+  /// pour qu'un paiement en dollars ne laisse jamais quelques francs dus.
   void _suivreTotal() {
-    if (_reglement != _Reglement.tout || _paiementModifie) return;
-    final total = _aPayer;
-    _paiement.devise = _boutique.devise;
-    _paiement.texte.text = total > 0 ? FormatMontant.pourSaisie(total, _boutique.devise) : '';
-    _paiementModifie = false;
+    if (_reglement != _Reglement.tout || _paiement.modifieParUtilisateur) return;
+    _paiement.afficherDepuisReference(
+      _aPayer,
+      reference: _boutique.devise,
+      tauxUsdVersCdf: _boutique.tauxUsdCdf,
+      arrondi: ArrondiDevise.haut,
+    );
   }
 
   Future<void> _ajouterArticle() async {
@@ -151,9 +148,7 @@ class _SaisieVentePageState extends ConsumerState<SaisieVentePage> {
   void _changerReglement(_Reglement r) {
     setState(() {
       _reglement = r;
-      _paiementModifie = false;
-      if (r == _Reglement.avance) _paiement.texte.clear();
-      _paiementModifie = false;
+      _paiement.vider();
     });
     _suivreTotal();
   }
@@ -262,6 +257,8 @@ class _SaisieVentePageState extends ConsumerState<SaisieVentePage> {
                   style: theme.textTheme.titleMedium?.copyWith(
                       fontFeatures: const [FontFeature.tabularFigures()])),
             ),
+            EquivalentDevise(
+                montant: _aPayer, deviseReference: devise, tauxUsdVersCdf: _boutique.tauxUsdCdf),
           ],
         ),
       ),

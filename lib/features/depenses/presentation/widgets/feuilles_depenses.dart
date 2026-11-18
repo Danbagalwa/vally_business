@@ -253,6 +253,7 @@ class _FeuilleVersementState extends State<_FeuilleVersement> {
             TexteAvecMontants([
               'Disponible : ',
               spanMontant(context, widget.disponible, devise, sens: SensMontant.positif, gras: true),
+              '  ≈ ${FormatMontant.formater(FormatMontant.convertir(widget.disponible, de: devise, vers: devise.autre, tauxUsdVersCdf: widget.boutique.tauxUsdCdf), devise.autre)}',
             ], style: theme.textTheme.bodyMedium),
             Text('Seul le bénéfice des ventes payées en entier peut être versé.',
                 style: theme.textTheme.bodySmall),
@@ -283,9 +284,14 @@ class _FeuilleVersementState extends State<_FeuilleVersement> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
-                onPressed: () => _montant
-                  ..devise = devise
-                  ..texte.text = FormatMontant.pourSaisie(widget.disponible, devise),
+                // Dans la devise choisie, arrondi vers le bas : jamais plus
+                // que le disponible.
+                onPressed: () => _montant.afficherDepuisReference(
+                  widget.disponible,
+                  reference: devise,
+                  tauxUsdVersCdf: widget.boutique.tauxUsdCdf,
+                  arrondi: ArrondiDevise.bas,
+                ),
                 child: const Text('Tout le disponible'),
               ),
             ),

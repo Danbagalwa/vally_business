@@ -81,10 +81,16 @@ class _FeuillePaiement extends StatefulWidget {
 
 class _FeuillePaiementState extends State<_FeuillePaiement> {
   final _formKey = GlobalKey<FormState>();
-  late final MontantSaisieController _montant = MontantSaisieController(
-    devise: widget.deviseReference,
-    initial: widget.resteAPayer > 0 ? widget.resteAPayer : null,
-  );
+  // Pré-rempli avec le reste à payer ; passer en USD le convertit
+  // (arrondi au centime supérieur : le client ne reste rien devoir).
+  late final MontantSaisieController _montant =
+      MontantSaisieController(devise: widget.deviseReference)
+        ..afficherDepuisReference(
+          widget.resteAPayer,
+          reference: widget.deviseReference,
+          tauxUsdVersCdf: widget.tauxUsdCdf,
+          arrondi: ArrondiDevise.haut,
+        );
   ModePaiement _mode = ModePaiement.especes;
   DateTime _date = DateUtils.dateOnly(DateTime.now());
 
@@ -132,6 +138,14 @@ class _FeuillePaiementState extends State<_FeuillePaiement> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Ajouter un paiement', style: theme.textTheme.titleMedium),
+            if (widget.resteAPayer > 0) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Reste à payer : ${FormatMontant.formater(widget.resteAPayer, widget.deviseReference)}'
+                '  ≈ ${FormatMontant.formater(FormatMontant.convertir(widget.resteAPayer, de: widget.deviseReference, vers: widget.deviseReference.autre, tauxUsdVersCdf: widget.tauxUsdCdf), widget.deviseReference.autre)}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: VallySpace.s4),
             ChampMontant(
               controller: _montant,

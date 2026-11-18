@@ -113,7 +113,7 @@ void main() {
         ),
       ),
     ));
-    await tester.tap(find.text('CDF'));
+    await tester.tap(find.text('USD'));
     await tester.pump();
     expect(controller.devise, Devise.usd);
 
