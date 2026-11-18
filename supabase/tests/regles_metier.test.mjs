@@ -196,18 +196,19 @@ const [art2] = await as(A, `insert into articles (nom, categorie, taille, quanti
   values ('Chemise wax', 'Chemise', 'L', 3, 8000, 12000) returning id`);
 const nbAvant = (await as(A, `select count(*)::int n from commandes`))[0].n;
 const [cmdRpc] = await expectOk('nouveau client + 2 pièces + avance de 5 USD, en un appel', () => as(A,
-  `select creer_commande($1::jsonb, null, 'Maman Rose', '+243 99 000 0000', '2026-11-18', 'Livrer samedi',
-     '{"montant_saisi": 5, "devise_saisie": "USD", "mode": "mobile_money"}'::jsonb) as id`,
+  `select creer_commande($1::jsonb, p_client_nom => 'Maman Rose', p_client_telephone => '+243 99 000 0000',
+     p_date => '2026-11-18', p_note => 'Livrer samedi',
+     p_paiement => '{"montant_saisi": 5, "devise_saisie": "USD", "mode": "mobile_money"}'::jsonb) as id`,
   [JSON.stringify([{ article_id: art2.id, quantite: 2, prix_vendu: 11000 }])]));
 await expectOk('commande : total 22 000, remise 2 000, payé 14 000, partiellement payée', () => as(A,
   `select * from v_commandes where id = $1`, [cmdRpc.id]),
   (r) => Number(r[0].total) === 22000 && Number(r[0].cout_remises) === 2000 && Number(r[0].total_paye) === 14000
     && r[0].statut_paiement === 'partiellement_payee' && r[0].client_nom === 'Maman Rose');
 await expectErr('stock insuffisant : rien n’est créé (ni commande, ni client)', () => as(A,
-  `select creer_commande($1::jsonb, null, 'Client fantôme')`,
+  `select creer_commande($1::jsonb, p_client_nom => 'Client fantôme')`,
   [JSON.stringify([{ article_id: art2.id, quantite: 1, prix_vendu: 12000 }, { article_id: art2.id, quantite: 0, prix_vendu: 1 }])]));
 await expectErr('stock insuffisant sur un 2e article', () => as(A,
-  `select creer_commande($1::jsonb, null, 'Client fantôme')`,
+  `select creer_commande($1::jsonb, p_client_nom => 'Client fantôme')`,
   [JSON.stringify([{ article_id: art2.id, quantite: 1, prix_vendu: 12000 }, { article_id: art.id, quantite: 9, prix_vendu: 1 }])]),
   'stock_insuffisant');
 await expectOk('… et la base est inchangée', async () => [
@@ -217,6 +218,57 @@ await expectOk('… et la base est inchangée', async () => [
 await expectErr('vente sans article refusée', () => as(A, `select creer_commande('[]'::jsonb)`), 'commande_vide');
 await expectErr('C ne peut pas vendre un article de Vally', () => as(C,
   `select creer_commande($1::jsonb)`, [JSON.stringify([{ article_id: art2.id, quantite: 1, prix_vendu: 1 }])]));
+
+console.log('\nRefonte : ventes ≠ commandes, livraison, clients, enfants');
+const [enfant] = await expectOk('article enfant ; adulte par défaut', () => as(A,
+  `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel, pour_enfant)
+   values ('Ensemble garçon', 'Ensemble', '4 ans', 10, 5000, 9000, true) returning id, pour_enfant`),
+  (r) => r[0].pour_enfant === true);
+await expectOk('v_stock expose pour_enfant', () => as(A, `select nom, pour_enfant from v_stock order by nom`),
+  (r) => r.find((x) => x.nom === 'Ensemble garçon').pour_enfant === true
+    && r.find((x) => x.nom === 'Chemise wax').pour_enfant === false);
+const ligneEnfant = (q) => JSON.stringify([{ article_id: enfant.id, quantite: q, prix_vendu: 9000 }]);
+const [vente] = await expectOk('vente au comptoir : remise tout de suite (livree)', () => as(A,
+  `select creer_commande($1::jsonb) as id`, [ligneEnfant(1)]));
+await expectOk('… type vente, statut livree, sans date de livraison', () => as(A,
+  `select type, statut_livraison, date_livraison from v_commandes where id = $1`, [vente.id]),
+  (r) => r[0].type === 'vente' && r[0].statut_livraison === 'livree' && r[0].date_livraison === null);
+await expectErr('commande sans client refusée', () => as(A,
+  `select creer_commande($1::jsonb, p_type => 'commande', p_date_livraison => '2026-11-20')`, [ligneEnfant(1)]),
+  'client_obligatoire');
+await expectErr('commande sans date de livraison refusée', () => as(A,
+  `select creer_commande($1::jsonb, p_type => 'commande', p_client_nom => 'Mme Kabila')`, [ligneEnfant(1)]),
+  'date_livraison_obligatoire');
+const [cmdLivree] = await expectOk('commande à livrer : 2 pièces + 3 000 de frais, avance 10 000', () => as(A,
+  `select creer_commande($1::jsonb, p_type => 'commande', p_client_nom => 'Mme Kabila',
+     p_date_livraison => '2026-11-20', p_mode_remise => 'livraison', p_adresse_livraison => 'Av. du Commerce 12',
+     p_frais_livraison => 3000,
+     p_paiement => '{"montant_saisi": 10000, "devise_saisie": "CDF", "mode": "especes"}'::jsonb) as id`,
+  [ligneEnfant(2)]));
+await expectOk('frais dans le total à payer, pas dans le bénéfice', () => as(A,
+  `select * from v_commandes where id = $1`, [cmdLivree.id]),
+  (r) => Number(r[0].total) === 21000 && Number(r[0].total_articles) === 18000
+    && Number(r[0].benefice) === 8000 && Number(r[0].reste_a_payer) === 11000
+    && r[0].statut_livraison === 'en_attente' && r[0].mode_remise === 'livraison'
+    && r[0].adresse_livraison === 'Av. du Commerce 12');
+await expectOk('stock réservé dès la commande (10 − 1 − 2 = 7)', () => as(A,
+  `select quantite_restante from v_stock where id = $1`, [enfant.id]), (r) => r[0].quantite_restante === 7);
+await expectOk('statut « prête »', () => as(A,
+  `update commandes set statut_livraison = 'prete' where id = $1 returning statut_livraison`, [cmdLivree.id]),
+  (r) => r[0].statut_livraison === 'prete');
+await expectErr('une commande doit garder sa date de livraison', () => as(A,
+  `update commandes set date_livraison = null where id = $1`, [cmdLivree.id]));
+await expectOk('v_clients : Mme Kabila doit 11 000 (1 impayé)', () => as(A,
+  `select * from v_clients where nom = 'Mme Kabila'`),
+  (r) => Number(r[0].total_du) === 11000 && r[0].nb_impayes === 1 && r[0].nb_achats === 1 && Number(r[0].total_achats) === 21000);
+await expectOk('annuler la commande : plus de dette, stock rendu', async () => {
+  await as(A, `update commandes set statut_livraison = 'annulee' where id = $1`, [cmdLivree.id]);
+  return [
+    ...(await as(A, `select total_du from v_clients where nom = 'Mme Kabila'`)),
+    ...(await as(A, `select quantite_restante from v_stock where id = $1`, [enfant.id])),
+  ];
+}, (r) => Number(r[0].total_du) === 0 && r[1].quantite_restante === 9);
+await expectOk('C ne voit pas les clients de Vally', () => as(C, `select * from v_clients`), (r) => r.length === 0);
 
 console.log(`\n${ok} réussis, ${ko} échoués`);
 process.exit(ko ? 1 : 0);
