@@ -150,8 +150,10 @@ class VallyRadius {
 }
 
 class VallyTheme {
-  static const _display = 'DMSerifDisplay';
-  static const _sans = 'Inter';
+  // Titres : Space Grotesk Bold. Reste : police du système (Roboto sur
+  // Android, San Francisco sur iPhone) — null = police par défaut.
+  static const _display = 'SpaceGrotesk';
+  static const String? _sans = null;
   static const _tabular = [FontFeature.tabularFigures()];
 
   static ThemeData get light => _build(
@@ -224,11 +226,11 @@ class VallyTheme {
     // Échelle de texte compacte, adaptée au téléphone.
     final text = TextTheme(
       // Grand montant (chiffre principal d'un écran)
-      displaySmall: TextStyle(fontFamily: _display, fontSize: 32, height: 38 / 32, color: ink, fontFeatures: _tabular),
+      displaySmall: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.5, fontSize: 32, height: 38 / 32, color: ink, fontFeatures: _tabular),
       // Titre d'écran mis en avant
-      headlineSmall: TextStyle(fontFamily: _display, fontSize: 24, height: 30 / 24, color: ink),
+      headlineSmall: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.3, fontSize: 24, height: 30 / 24, color: ink),
       // Titre de barre d'application
-      titleLarge: TextStyle(fontFamily: _display, fontSize: 22, height: 28 / 22, color: ink),
+      titleLarge: TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, letterSpacing: -0.3, fontSize: 22, height: 28 / 22, color: ink),
       // Titres de section
       titleMedium: TextStyle(fontFamily: _sans, fontSize: 16, height: 22 / 16, fontWeight: FontWeight.w600, color: ink),
       // Montants dans les listes
