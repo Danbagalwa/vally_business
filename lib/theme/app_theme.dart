@@ -280,7 +280,10 @@ class VallyTheme {
         actionsIconTheme: IconThemeData(color: ink, size: 21),
       ),
       cardTheme: CardThemeData(
+        // Cartes en blanc pur (sombre : carte de la charte), sans teinte Material 3.
         color: surfaceRaised,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
