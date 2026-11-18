@@ -47,12 +47,9 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
     final devise = ref.watch(boutiqueActiveProvider).devise;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Clients')),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Nouveau client',
-        onPressed: _nouveau,
-        child: const Icon(Icons.person_add_alt),
-      ),
+      appBar: AppBar(title: const Text('Clients'), actions: [
+        BoutonAjout(libelle: 'Client', tooltip: 'Nouveau client', onPressed: _nouveau),
+      ]),
       body: ref.watch(clientsResumeProvider).when(
             skipLoadingOnRefresh: true,
             loading: () => const ListeSquelette(),
@@ -73,7 +70,7 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
               return RefreshIndicator(
                 onRefresh: () => ref.refresh(clientsResumeProvider.future),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, 96),
+                  padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, 24),
                   children: [
                     Card(
                       child: ListTile(

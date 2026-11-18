@@ -97,12 +97,9 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
     final moisCourant = DateTime(maintenant.year, maintenant.month);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mes dépenses')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _ajouter(boutique),
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
-      ),
+      appBar: AppBar(title: const Text('Mes dépenses'), actions: [
+        BoutonAjout(libelle: 'Ajouter', tooltip: 'Ajouter une entrée ou une sortie', onPressed: () => _ajouter(boutique)),
+      ]),
       body: mouvements.when(
         skipLoadingOnRefresh: true,
         loading: () => const ListeSquelette(),
@@ -115,7 +112,7 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
           return RefreshIndicator(
             onRefresh: () => ref.refresh(mouvementsProvider.future),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, 96),
+              padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, 24),
               children: [
                 _CarteSolde(bilan: total, devise: devise),
                 const SizedBox(height: VallySpace.s2),

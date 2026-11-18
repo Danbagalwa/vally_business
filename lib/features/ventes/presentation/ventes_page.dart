@@ -55,12 +55,8 @@ class _VentesPageState extends ConsumerState<VentesPage> {
               _recherche = '';
             }),
           ),
+          BoutonAjout(libelle: 'Vente', tooltip: 'Nouvelle vente', onPressed: () => context.push(Routes.nouvelleVente)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(Routes.nouvelleVente),
-        icon: const Icon(Icons.add),
-        label: const Text('Nouvelle vente'),
       ),
       body: commandes.when(
         skipLoadingOnRefresh: true,
@@ -127,7 +123,7 @@ class _VentesPageState extends ConsumerState<VentesPage> {
                       ),
                     ]),
                   ),
-              const SliverToBoxAdapter(child: SizedBox(height: 96)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ]),
           );
         },

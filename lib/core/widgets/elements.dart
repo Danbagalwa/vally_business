@@ -453,3 +453,35 @@ Future<bool> confirmer(
   );
   return ok == true;
 }
+
+/// Action « Ajouter » de l'AppBar (remplace le bouton flottant) :
+/// bouton rose compact, icône + libellé court, retour haptique.
+class BoutonAjout extends StatelessWidget {
+  const BoutonAjout({super.key, required this.libelle, required this.onPressed, this.tooltip});
+
+  final String libelle;
+  final VoidCallback onPressed;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final bouton = FilledButton.icon(
+      onPressed: () {
+        HapticFeedback.lightImpact();
+        onPressed();
+      },
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.xs)),
+      ),
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: Text(libelle),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, right: 12),
+      child: tooltip == null ? bouton : Tooltip(message: tooltip!, child: bouton),
+    );
+  }
+}

@@ -54,12 +54,8 @@ class _StockPageState extends ConsumerState<StockPage> {
               _recherche = '';
             }),
           ),
+          BoutonAjout(libelle: 'Article', tooltip: 'Ajouter un article', onPressed: () => context.push(Routes.nouvelArticle)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(Routes.nouvelArticle),
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter un article'),
       ),
       body: articles.when(
         skipLoadingOnRefresh: true,
@@ -122,7 +118,7 @@ class _StockPageState extends ConsumerState<StockPage> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(VallySpace.s4, VallySpace.s2, VallySpace.s4, 96),
+                  padding: const EdgeInsets.fromLTRB(VallySpace.s4, VallySpace.s2, VallySpace.s4, 24),
                   sliver: SliverToBoxAdapter(
                     child: Card(
                       clipBehavior: Clip.antiAlias,

@@ -74,12 +74,8 @@ class _CommandesPageState extends ConsumerState<CommandesPage> {
             icon: const Icon(Icons.calendar_month_outlined),
             onPressed: _choisirJour,
           ),
+          BoutonAjout(libelle: 'Commande', tooltip: 'Nouvelle commande', onPressed: () => context.push(Routes.nouvelleCommande)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(Routes.nouvelleCommande),
-        icon: const Icon(Icons.add),
-        label: const Text('Nouvelle commande'),
       ),
       body: commandes.when(
         skipLoadingOnRefresh: true,
@@ -172,7 +168,7 @@ class _CommandesPageState extends ConsumerState<CommandesPage> {
                       ],
                     ]),
                   ),
-              const SliverToBoxAdapter(child: SizedBox(height: 96)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ]),
           );
         },

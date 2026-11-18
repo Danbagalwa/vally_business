@@ -111,8 +111,8 @@ void main() {
 
   final ecrans = <String, (Widget, String)>{
     'Accueil': (const AccueilPage(), 'À livrer aujourd’hui'),
-    'Ventes': (const VentesPage(), 'Nouvelle vente'),
-    'Commandes': (const CommandesPage(), 'Nouvelle commande'),
+    'Ventes': (const VentesPage(), 'Vente'),
+    'Commandes': (const CommandesPage(), 'Commande'),
     'Plus': (const PlusPage(), 'Clients et dettes'),
     'Clients': (const ClientsPage(), 'On te doit '),
     'Fiche client': (const ClientDetailPage(clientId: 'cl-Maman Rose Mbuyi Kalonji'), 'À encaisser'),
