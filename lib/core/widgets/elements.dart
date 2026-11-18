@@ -455,7 +455,8 @@ Future<bool> confirmer(
 }
 
 /// Action « Ajouter » de l'AppBar (remplace le bouton flottant) :
-/// icône « + » seule sur fond rose, infobulle obligatoire, haptique.
+/// icône « + » seule sur fond rose pâle (rose profond pour l’icône),
+/// infobulle obligatoire, haptique.
 class BoutonAjout extends StatelessWidget {
   const BoutonAjout({super.key, required this.libelle, required this.onPressed, this.tooltip});
 
@@ -466,15 +467,19 @@ class BoutonAjout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 2, right: 10),
       child: IconButton.filled(
         tooltip: tooltip ?? libelle,
+        color: scheme.onPrimaryContainer,
         onPressed: () {
           HapticFeedback.lightImpact();
           onPressed();
         },
         style: IconButton.styleFrom(
+          backgroundColor: scheme.primaryContainer,
+          foregroundColor: scheme.onPrimaryContainer,
           minimumSize: const Size(36, 36),
           fixedSize: const Size(36, 36),
           padding: EdgeInsets.zero,
