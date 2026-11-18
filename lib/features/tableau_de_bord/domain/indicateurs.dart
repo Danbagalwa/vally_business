@@ -54,6 +54,7 @@ class IndicateursActuels {
     required this.beneficeRealise,
     required this.beneficeVerse,
     required this.beneficeDisponible,
+    this.beneficeEncaisse = 0,
     required this.resteDu,
   });
 
@@ -65,6 +66,9 @@ class IndicateursActuels {
   /// Déjà versé dans Mes dépenses (« Me verser un bénéfice »).
   final double beneficeVerse;
   final double beneficeDisponible;
+
+  /// Bénéfice des ventes payées en entier (seul ce bénéfice peut être versé).
+  final double beneficeEncaisse;
   final double resteDu;
 
   static const vide = IndicateursActuels(
@@ -85,6 +89,7 @@ class IndicateursActuels {
         beneficeRealise: _n(j['benefice_realise']),
         beneficeVerse: _n(j['benefice_verse']),
         beneficeDisponible: _n(j['benefice_disponible']),
+        beneficeEncaisse: _n(j['benefice_encaisse']),
         resteDu: _n(j['reste_du']),
       );
 }

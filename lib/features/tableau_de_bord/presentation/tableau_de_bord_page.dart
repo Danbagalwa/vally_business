@@ -223,6 +223,10 @@ class _BlocActuel extends ConsumerWidget {
                               sens: a.beneficeRealise >= 0
                                   ? SensMontant.positif
                                   : SensMontant.negatif)),
+                      _Ligne('dont encaissé (ventes payées)',
+                          MontantTexte(a.beneficeEncaisse.abs(),
+                              devise: devise,
+                              style: Theme.of(context).textTheme.bodyMedium)),
                       _Ligne('Déjà versé dans Mes dépenses',
                           MontantTexte(a.beneficeVerse, devise: devise)),
                       const Divider(height: VallySpace.s4),

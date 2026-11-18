@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/format/dates.dart';
 import '../../../core/supabase/supabase_client.dart';
+import '../../depenses/data/depenses_repository.dart';
 import '../../stock/data/stock_repository.dart';
 import '../../ventes/data/ventes_repository.dart';
 import '../domain/indicateurs.dart';
@@ -74,6 +75,8 @@ final indicateursPeriodeProvider =
 final indicateursActuelsProvider =
     FutureProvider.autoDispose<IndicateursActuels>((ref) async {
   await _suivreVentesEtStock(ref);
+  // Le bénéfice disponible baisse à chaque versement dans Mes dépenses.
+  await ref.watch(mouvementsProvider.future);
   return ref.watch(tableauDeBordRepositoryProvider).actuels();
 });
 

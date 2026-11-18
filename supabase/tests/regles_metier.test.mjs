@@ -147,10 +147,17 @@ await expectOk('v_dashboard : bénéfice réalisé 26 000 (21 000 + 5 000), annu
   (r) => Number(r[0].benefice_realise) === 26000 && Number(r[0].chiffre_affaires) === 66000 && Number(r[0].total_encaisse) === 51000);
 await expectErr('l’appli ne peut pas créer une entrée « boutique » directement', () => as(A,
   `insert into mouvements (type, montant_saisi, devise_saisie, montant, categorie, source) values ('entree', 1000, 'CDF', 1, 'x', 'boutique')`));
-await expectErr('verser plus que le bénéfice disponible', () => as(A, `select verser_benefice(30000, 'CDF')`), 'benefice_insuffisant');
+await expectOk('bénéfice encaissé 21 000 : la vente pas encore payée (5 000) attend', () => as(A, `select * from v_dashboard`),
+  (r) => Number(r[0].benefice_encaisse) === 21000 && Number(r[0].benefice_disponible) === 21000);
+await expectErr('verser plus que le bénéfice encaissé', () => as(A, `select verser_benefice(22000, 'CDF')`), 'benefice_insuffisant');
 await expectOk('me verser 5 USD (14 000 CDF)', () => as(A, `select verser_benefice(5, 'USD', null, 'Pour le loyer') as id`));
-await expectOk('bénéfice versé 14 000, disponible 12 000', () => as(A, `select * from v_dashboard`),
-  (r) => Number(r[0].benefice_verse) === 14000 && Number(r[0].benefice_disponible) === 12000);
+await expectOk('bénéfice versé 14 000, disponible 7 000', () => as(A, `select * from v_dashboard`),
+  (r) => Number(r[0].benefice_verse) === 14000 && Number(r[0].benefice_disponible) === 7000);
+await expectErr('8 000 de plus : refusé tant que la vente n’est pas payée', () => as(A, `select verser_benefice(8000, 'CDF')`), 'benefice_insuffisant');
+await expectOk('le client paie la vente en attente (15 000) → disponible 12 000', async () => {
+  await as(A, `insert into paiements (commande_id, montant_saisi, devise_saisie) values ($1, 15000, 'CDF')`, [cmd3.id]);
+  return as(A, `select * from v_dashboard`);
+}, (r) => Number(r[0].benefice_encaisse) === 26000 && Number(r[0].benefice_disponible) === 12000);
 await expectOk('sortie manuelle de 4 000 (loyer)', () => as(A,
   `insert into mouvements (type, montant_saisi, devise_saisie, montant, categorie) values ('sortie', 4000, 'CDF', 1, 'Loyer') returning montant`),
   (r) => Number(r[0].montant) === 4000);
