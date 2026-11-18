@@ -18,6 +18,9 @@ class VallyPalette {
   static const roseDeep = Color(0xFF8F1D45);
   static const roseSoft = Color(0xFFFCE4EC);
   static const rosePop = Color(0xFFF783AC); // décoratif uniquement, jamais pour du texte
+  // Barres des graphiques (validé : bande de luminosité + contraste sur les cartes).
+  static const graphique = Color(0xFFC2255C);
+  static const graphiqueDark = Color(0xFFE64A85);
   static const surface = Color(0xFFFFF7FA);
   static const surfaceRaised = Color(0xFFFFFFFF);
   static const ink = Color(0xFF2A1520);
@@ -47,29 +50,35 @@ class VallyColors extends ThemeExtension<VallyColors> {
     required this.benefice,
     required this.attention,
     required this.rosePop,
+    required this.graphique,
   });
 
   final Color benefice;  // bénéfice, entrée d'argent, commande soldée
   final Color attention; // sortie d'argent, reste à payer, stock faible, remise
-  final Color rosePop;   // graphiques et décorations
+  final Color rosePop;   // décorations
+  final Color graphique; // marques des graphiques (barres)
 
   static const light = VallyColors(
     benefice: VallyPalette.benefice,
     attention: VallyPalette.attention,
     rosePop: VallyPalette.rosePop,
+    graphique: VallyPalette.graphique,
   );
   static const dark = VallyColors(
     benefice: VallyPalette.beneficeDark,
     attention: VallyPalette.attentionDark,
     rosePop: VallyPalette.rosePop,
+    graphique: VallyPalette.graphiqueDark,
   );
 
   @override
-  VallyColors copyWith({Color? benefice, Color? attention, Color? rosePop}) =>
+  VallyColors copyWith(
+          {Color? benefice, Color? attention, Color? rosePop, Color? graphique}) =>
       VallyColors(
         benefice: benefice ?? this.benefice,
         attention: attention ?? this.attention,
         rosePop: rosePop ?? this.rosePop,
+        graphique: graphique ?? this.graphique,
       );
 
   @override
@@ -79,6 +88,7 @@ class VallyColors extends ThemeExtension<VallyColors> {
       benefice: Color.lerp(benefice, other.benefice, t)!,
       attention: Color.lerp(attention, other.attention, t)!,
       rosePop: Color.lerp(rosePop, other.rosePop, t)!,
+      graphique: Color.lerp(graphique, other.graphique, t)!,
     );
   }
 }
