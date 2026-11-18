@@ -19,6 +19,7 @@ const _messageReseau =
 /// Transforme n'importe quelle erreur en phrase courte, en français.
 String messageErreur(Object erreur) {
   if (erreur is ErreurMetier) return erreur.message;
+  if (erreur is String) return erreur;
   if (erreur is PostgrestException) {
     // Erreurs levées par nos règles SQL : le message est déjà rédigé.
     if (erreur.code == 'P0001') return erreur.message;

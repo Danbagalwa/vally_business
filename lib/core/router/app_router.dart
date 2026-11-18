@@ -12,6 +12,8 @@ import '../../features/depenses/presentation/depenses_page.dart';
 import '../../features/stock/presentation/article_form_page.dart';
 import '../../features/stock/presentation/stock_page.dart';
 import '../../features/tableau_de_bord/presentation/tableau_de_bord_page.dart';
+import '../../features/ventes/presentation/commande_detail_page.dart';
+import '../../features/ventes/presentation/nouvelle_vente_page.dart';
 import '../../features/ventes/presentation/ventes_page.dart';
 import 'coquille_onglets.dart';
 import 'routes.dart';
@@ -76,6 +78,22 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: Routes.ventes,
               builder: (context, state) => const VentesPage(),
+              routes: [
+                GoRoute(
+                  path: 'nouvelle',
+                  parentNavigatorKey: _racineKey,
+                  builder: (context, state) =>
+                      const PorteBoutique(child: NouvelleVentePage()),
+                ),
+                GoRoute(
+                  path: ':id',
+                  parentNavigatorKey: _racineKey,
+                  builder: (context, state) => PorteBoutique(
+                    child: CommandeDetailPage(
+                        commandeId: state.pathParameters['id']!),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [

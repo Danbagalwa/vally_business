@@ -191,5 +191,32 @@ await expectErr('C ne peut pas déposer dans le dossier de Vally', () => as(C,
   `insert into storage.objects (bucket_id, name) values ('photos-articles', $1)`, [`${boutique}/pirate.jpg`]));
 await expectOk('C ne voit pas les photos de Vally', () => as(C, `select * from storage.objects`), (r) => r.length === 0);
 
+console.log('\ncreer_commande (module Ventes)');
+const [art2] = await as(A, `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel)
+  values ('Chemise wax', 'Chemise', 'L', 3, 8000, 12000) returning id`);
+const nbAvant = (await as(A, `select count(*)::int n from commandes`))[0].n;
+const [cmdRpc] = await expectOk('nouveau client + 2 pièces + avance de 5 USD, en un appel', () => as(A,
+  `select creer_commande($1::jsonb, null, 'Maman Rose', '+243 99 000 0000', '2026-11-18', 'Livrer samedi',
+     '{"montant_saisi": 5, "devise_saisie": "USD", "mode": "mobile_money"}'::jsonb) as id`,
+  [JSON.stringify([{ article_id: art2.id, quantite: 2, prix_vendu: 11000 }])]));
+await expectOk('commande : total 22 000, remise 2 000, payé 14 000, partiellement payée', () => as(A,
+  `select * from v_commandes where id = $1`, [cmdRpc.id]),
+  (r) => Number(r[0].total) === 22000 && Number(r[0].cout_remises) === 2000 && Number(r[0].total_paye) === 14000
+    && r[0].statut_paiement === 'partiellement_payee' && r[0].client_nom === 'Maman Rose');
+await expectErr('stock insuffisant : rien n’est créé (ni commande, ni client)', () => as(A,
+  `select creer_commande($1::jsonb, null, 'Client fantôme')`,
+  [JSON.stringify([{ article_id: art2.id, quantite: 1, prix_vendu: 12000 }, { article_id: art2.id, quantite: 0, prix_vendu: 1 }])]));
+await expectErr('stock insuffisant sur un 2e article', () => as(A,
+  `select creer_commande($1::jsonb, null, 'Client fantôme')`,
+  [JSON.stringify([{ article_id: art2.id, quantite: 1, prix_vendu: 12000 }, { article_id: art.id, quantite: 9, prix_vendu: 1 }])]),
+  'stock_insuffisant');
+await expectOk('… et la base est inchangée', async () => [
+  ...(await as(A, `select count(*)::int n from commandes`)),
+  ...(await as(A, `select count(*)::int n from clients where nom = 'Client fantôme'`))],
+  (r) => r[0].n === nbAvant + 1 && r[1].n === 0);
+await expectErr('vente sans article refusée', () => as(A, `select creer_commande('[]'::jsonb)`), 'commande_vide');
+await expectErr('C ne peut pas vendre un article de Vally', () => as(C,
+  `select creer_commande($1::jsonb)`, [JSON.stringify([{ article_id: art2.id, quantite: 1, prix_vendu: 1 }])]));
+
 console.log(`\n${ok} réussis, ${ko} échoués`);
 process.exit(ko ? 1 : 0);
