@@ -1,9 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/erreurs.dart';
+import '../../../core/images.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../boutique/data/boutique_repository.dart';
 import '../domain/article.dart';
@@ -55,15 +54,15 @@ class StockRepository {
   Future<void> remplacerPhoto({
     required String boutiqueId,
     required String articleId,
-    required Uint8List octets,
+    required PhotoCompressee photo,
     String? ancienChemin,
   }) async {
-    final chemin =
-        '$boutiqueId/$articleId-${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final chemin = '$boutiqueId/$articleId-'
+        '${DateTime.now().millisecondsSinceEpoch}.${photo.extension}';
     await _client.storage.from(_bucketPhotos).uploadBinary(
           chemin,
-          octets,
-          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          photo.octets,
+          fileOptions: FileOptions(contentType: photo.typeMime),
         );
     await _client
         .from('articles')

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/dates.dart';
+import '../../../core/images.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/widgets/champ_montant.dart';
 import '../../../core/widgets/elements.dart';
@@ -75,7 +76,8 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
   late DateTime _dateAppro;
   late bool _pourEnfant;
 
-  Uint8List? _nouvellePhoto;
+  PhotoCompressee? _nouvellePhoto;
+  bool _compression = false;
   bool _photoRetiree = false;
   bool _enCours = false;
 
@@ -157,18 +159,23 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
         source: action == _ActionPhoto.appareil
             ? ImageSource.camera
             : ImageSource.gallery,
-        maxWidth: 1280,
-        maxHeight: 1280,
-        imageQuality: 80,
+        // Première réduction à la prise de vue, puis compression WebP.
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 90,
       );
       if (fichier == null) return;
-      final octets = await fichier.readAsBytes();
+      setState(() => _compression = true);
+      final photo = await compresserPhoto(await fichier.readAsBytes());
+      if (!mounted) return;
       setState(() {
-        _nouvellePhoto = octets;
+        _nouvellePhoto = photo;
         _photoRetiree = false;
       });
     } catch (e) {
       if (mounted) afficherErreur(context, e);
+    } finally {
+      if (mounted) setState(() => _compression = false);
     }
   }
 
@@ -207,7 +214,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
         await repo.remplacerPhoto(
           boutiqueId: _boutique.id,
           articleId: id,
-          octets: _nouvellePhoto!,
+          photo: _nouvellePhoto!,
           ancienChemin: _article?.photoChemin,
         );
       } else if (_photoRetiree && _article?.photoChemin != null) {
@@ -280,7 +287,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
       bottomNavigationBar: BarreAction(
         libelle: _modification ? 'Enregistrer' : 'Ajouter au stock',
         icone: Icons.check,
-        enCours: _enCours,
+        enCours: _enCours || _compression,
         onPressed: _enregistrer,
       ),
       body: Form(
@@ -422,7 +429,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
     if (_nouvellePhoto != null) {
       image = ClipRRect(
         borderRadius: BorderRadius.circular(VallyRadius.md),
-        child: Image.memory(_nouvellePhoto!,
+        child: Image.memory(_nouvellePhoto!.octets,
             width: taille, height: taille, fit: BoxFit.cover),
       );
     } else {
@@ -431,13 +438,26 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
         taille: taille,
       );
     }
+    final poids = _nouvellePhoto == null
+        ? null
+        : '${(_nouvellePhoto!.octets.length / 1024).round()} Ko';
     return Column(
       children: [
-        GestureDetector(onTap: _choisirPhoto, child: image),
+        GestureDetector(
+          onTap: _compression ? null : _choisirPhoto,
+          child: Stack(alignment: Alignment.center, children: [
+            image,
+            if (_compression)
+              const SizedBox.square(
+                  dimension: 28, child: CircularProgressIndicator(strokeWidth: 3)),
+          ]),
+        ),
         TextButton.icon(
-          onPressed: _choisirPhoto,
+          onPressed: _compression ? null : _choisirPhoto,
           icon: const Icon(Icons.photo_camera_outlined),
-          label: const Text('Photo (facultatif)'),
+          label: Text(_compression
+              ? 'Compression…'
+              : (poids == null ? 'Photo (facultatif)' : 'Photo · $poids')),
         ),
       ],
     );
