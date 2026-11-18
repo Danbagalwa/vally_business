@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -77,26 +76,6 @@ class AccueilPage extends ConsumerWidget {
               onLivraisons: () => context.go(Routes.commandes),
               onMois: () => context.push(Routes.statistiques),
             ),
-            const SizedBox(height: 14),
-
-            // ─── Raccourcis ───
-            Row(children: [
-              Expanded(
-                child: _Raccourci(
-                  icone: Icons.point_of_sale_outlined,
-                  libelle: 'Nouvelle vente',
-                  onTap: () => context.push(Routes.nouvelleVente),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _Raccourci(
-                  icone: Icons.inventory_2_outlined,
-                  libelle: 'Nouvelle commande',
-                  onTap: () => context.push(Routes.nouvelleCommande),
-                ),
-              ),
-            ]),
 
             // ─── Livraisons ───
             const SizedBox(height: VallySpace.s6),
@@ -173,41 +152,6 @@ class AccueilPage extends ConsumerWidget {
   static bool _memeJour(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-}
-
-/// Raccourci : tuile d'icône + libellé, dans une carte.
-class _Raccourci extends StatelessWidget {
-  const _Raccourci({required this.icone, required this.libelle, required this.onTap});
-
-  final IconData icone;
-  final String libelle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            TuileIcone(icone, taille: 40),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(libelle,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-                  maxLines: 2),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
 }
 
 /// Carte héro : dégradé de marque, logo en filigrane, ventes du jour en
