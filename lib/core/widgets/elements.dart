@@ -455,33 +455,33 @@ Future<bool> confirmer(
 }
 
 /// Action « Ajouter » de l'AppBar (remplace le bouton flottant) :
-/// bouton rose compact, icône + libellé court, retour haptique.
+/// icône « + » seule sur fond rose, infobulle obligatoire, haptique.
 class BoutonAjout extends StatelessWidget {
   const BoutonAjout({super.key, required this.libelle, required this.onPressed, this.tooltip});
 
+  /// Sert d'infobulle et de libellé d'accessibilité si [tooltip] est absent.
   final String libelle;
   final VoidCallback onPressed;
   final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    final bouton = FilledButton.icon(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        onPressed();
-      },
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        visualDensity: VisualDensity.compact,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.xs)),
-      ),
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: Text(libelle),
-    );
     return Padding(
-      padding: const EdgeInsets.only(left: 4, right: 12),
-      child: tooltip == null ? bouton : Tooltip(message: tooltip!, child: bouton),
+      padding: const EdgeInsets.only(left: 2, right: 10),
+      child: IconButton.filled(
+        tooltip: tooltip ?? libelle,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onPressed();
+        },
+        style: IconButton.styleFrom(
+          minimumSize: const Size(36, 36),
+          fixedSize: const Size(36, 36),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.xs)),
+        ),
+        icon: const Icon(Icons.add_rounded, size: 22),
+      ),
     );
   }
 }
