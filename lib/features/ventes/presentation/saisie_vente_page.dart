@@ -222,7 +222,8 @@ class _SaisieVentePageState extends ConsumerState<SaisieVentePage> {
       rafraichirVentes(ref);
       if (!mounted) return;
       afficherSucces(context, _commande ? 'Commande enregistrée.' : 'Vente enregistrée.');
-      context.pushReplacement(_commande ? Routes.commande(id) : Routes.vente(id));
+      // Le détail proposera tout de suite d'envoyer la facture.
+      context.pushReplacement(_commande ? Routes.commande(id) : Routes.vente(id), extra: true);
     } catch (e) {
       if (mounted) afficherErreur(context, e);
     } finally {

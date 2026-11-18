@@ -305,5 +305,28 @@ await expectOk('annuler la commande : plus de dette, stock rendu', async () => {
 }, (r) => Number(r[0].total_du) === 0 && r[1].quantite_restante === 8);
 await expectOk('C ne voit pas les clients de Vally', () => as(C, `select * from v_clients`), (r) => r.length === 0);
 
+console.log('\nNuméros de facture');
+await expectOk('chaque vente de Vally a un numéro unique « AAAA-0001 »', () => as(A,
+  `select numero from commandes order by created_at`),
+  (r) => r.length > 0 && r.every((x) => /^\d{4}-\d{4}$/.test(x.numero)) && new Set(r.map((x) => x.numero)).size === r.length);
+await expectOk('numéros qui se suivent', async () => {
+  const [a1] = await as(A, `insert into commandes default values returning numero`);
+  const [a2] = await as(A, `insert into commandes default values returning numero`);
+  return [a1.numero, a2.numero];
+}, ([n1, n2]) => n1.slice(0, 5) === n2.slice(0, 5) && Number(n2.slice(5)) === Number(n1.slice(5)) + 1);
+await expectOk('une autre boutique a sa propre suite (commence à 0001)', async () => {
+  const [c1] = await as(C, `insert into commandes default values returning numero`);
+  return c1.numero;
+}, (n) => n.endsWith('-0001'));
+await expectOk('un numéro ne peut pas être changé', async () => {
+  const [avant] = await as(A, `select id, numero from commandes order by created_at limit 1`);
+  await as(A, `update commandes set numero = 'PIRATE', note = 'x' where id = $1`, [avant.id]);
+  const [apres] = await as(A, `select numero from commandes where id = $1`, [avant.id]);
+  return [avant.numero, apres.numero];
+}, ([a, b]) => a === b);
+await expectOk('v_commandes expose le numéro', () => as(A, `select numero from v_commandes limit 1`),
+  (r) => /^\d{4}-\d{4}$/.test(r[0].numero));
+await expectErr('le compteur n’est pas lisible depuis l’appli', () => as(A, `select * from compteurs_factures`));
+
 console.log(`\n${ok} réussis, ${ko} échoués`);
 process.exit(ko ? 1 : 0);

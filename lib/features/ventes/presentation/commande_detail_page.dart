@@ -13,6 +13,7 @@ import '../../../core/widgets/page_erreur.dart';
 import '../../../theme/app_theme.dart';
 import '../../boutique/data/boutique_repository.dart';
 import '../../boutique/domain/boutique.dart';
+import '../../factures/presentation/feuille_facture.dart';
 import '../data/ventes_repository.dart';
 import '../domain/commande.dart';
 import 'actions_commande.dart';
@@ -21,9 +22,12 @@ import 'widgets/saisie_paiement.dart';
 
 /// Détail d'une vente ou d'une commande.
 class CommandeDetailPage extends ConsumerStatefulWidget {
-  const CommandeDetailPage({super.key, required this.commandeId});
+  const CommandeDetailPage({super.key, required this.commandeId, this.proposerFacture = false});
 
   final String commandeId;
+
+  /// Juste après l'enregistrement : proposer l'envoi de la facture.
+  final bool proposerFacture;
 
   @override
   ConsumerState<CommandeDetailPage> createState() => _CommandeDetailPageState();
@@ -31,6 +35,7 @@ class CommandeDetailPage extends ConsumerStatefulWidget {
 
 class _CommandeDetailPageState extends ConsumerState<CommandeDetailPage> {
   bool _enCours = false;
+  bool _propositionFaite = false;
 
   VentesRepository get _repo => ref.read(ventesRepositoryProvider);
 
@@ -126,7 +131,18 @@ class _CommandeDetailPageState extends ConsumerState<CommandeDetailPage> {
                 erreur: e,
                 onReessayer: () => ref.invalidate(commandeDetailProvider(widget.commandeId))),
           ),
-          data: (d) => _contenu(context, d, boutique),
+          data: (d) {
+            // Après une vente ou une commande : on propose la facture une fois.
+            if (widget.proposerFacture && !_propositionFaite) {
+              _propositionFaite = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ouvrirFeuilleFacture(context, detail: d, boutique: boutique, apresEnregistrement: true);
+                }
+              });
+            }
+            return _contenu(context, d, boutique);
+          },
         );
   }
 
@@ -139,6 +155,11 @@ class _CommandeDetailPageState extends ConsumerState<CommandeDetailPage> {
       appBar: AppBar(
         title: Text(c.estCommande ? 'Commande' : 'Vente'),
         actions: [
+          IconButton(
+            tooltip: 'Facture',
+            icon: const Icon(Icons.receipt_long_outlined, size: 21),
+            onPressed: () => ouvrirFeuilleFacture(context, detail: d, boutique: boutique),
+          ),
           PopupMenuButton<String>(
             tooltip: 'Plus d’actions',
             enabled: !_enCours,

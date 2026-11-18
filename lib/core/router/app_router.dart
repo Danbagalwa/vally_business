@@ -84,7 +84,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (_, _) => const VentesPage(),
               routes: [
                 _pleinEcran('nouvelle', (_) => const SaisieVentePage(type: TypeCommande.vente)),
-                _pleinEcran(':id', (s) => CommandeDetailPage(commandeId: s.pathParameters['id']!)),
+                _pleinEcran(':id', (s) => CommandeDetailPage(
+                    commandeId: s.pathParameters['id']!, proposerFacture: s.extra == true)),
               ],
             ),
           ]),
@@ -94,7 +95,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (_, _) => const CommandesPage(),
               routes: [
                 _pleinEcran('nouvelle', (_) => const SaisieVentePage(type: TypeCommande.commande)),
-                _pleinEcran(':id', (s) => CommandeDetailPage(commandeId: s.pathParameters['id']!)),
+                _pleinEcran(':id', (s) => CommandeDetailPage(
+                    commandeId: s.pathParameters['id']!, proposerFacture: s.extra == true)),
               ],
             ),
           ]),

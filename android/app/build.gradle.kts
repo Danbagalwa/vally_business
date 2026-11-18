@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider : partage des factures PDF avec WhatsApp.
+    implementation("androidx.core:core-ktx:1.13.1")
+}

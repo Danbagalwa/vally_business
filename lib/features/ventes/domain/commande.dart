@@ -81,6 +81,7 @@ DateTime _jour(DateTime d) => DateTime(d.year, d.month, d.day);
 class Commande {
   const Commande({
     required this.id,
+    this.numero,
     this.type = TypeCommande.vente,
     this.clientId,
     this.clientNom,
@@ -106,6 +107,9 @@ class Commande {
   });
 
   final String id;
+
+  /// Numéro de facture « 2026-0042 » (attribué par la base).
+  final String? numero;
   final TypeCommande type;
   final String? clientId;
   final String? clientNom;
@@ -167,6 +171,7 @@ class Commande {
 
   factory Commande.fromJson(Map<String, dynamic> json) => Commande(
         id: json['id'] as String,
+        numero: json['numero'] as String?,
         type: TypeCommande.depuisCode(json['type'] as String?),
         clientId: json['client_id'] as String?,
         clientNom: json['client_nom'] as String?,

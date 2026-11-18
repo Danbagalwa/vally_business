@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Factures PDF générées dans le cache de l'appli, partagées avec WhatsApp. -->
+<paths>
+    <cache-path name="factures" path="factures/" />
+</paths>
