@@ -1,13 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/format/montant.dart';
-import '../../../../core/widgets/elements.dart';
 import '../../../../core/widgets/montant_texte.dart';
 import '../../../../theme/app_theme.dart';
 import '../../domain/article.dart';
 import 'photo_article.dart';
 
-/// Ligne compacte de la liste du stock.
+/// Une ligne de l'inventaire : photo, nom et prix, description, puis ce
+/// qu'il en reste.
 class ArticleTuile extends StatelessWidget {
   const ArticleTuile({
     super.key,
@@ -23,41 +23,47 @@ class ArticleTuile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final a = article;
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
-        child: Row(children: [
-          PhotoArticle(chemin: article.photoChemin, taille: 48),
+        padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          PhotoArticle(chemin: a.photoChemin, taille: 52),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(article.nom,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              Text(article.description,
-                  style: theme.textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Row(children: [
-                if (article.pourEnfant) ...[
-                  const Pastille(texte: 'Enfant', icone: Icons.child_care),
-                  const SizedBox(width: 6),
-                ],
-                Flexible(child: BadgeStock(article: article)),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Text(a.nom,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 10),
+                MontantTexte(a.prixVenteHabituel,
+                    devise: devise,
+                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
               ]),
+              const SizedBox(height: 2),
+              Text(
+                [a.description, if (a.pourEnfant) 'Enfant'].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
+              ),
+              const SizedBox(height: 4),
+              BadgeStock(article: a),
             ]),
           ),
-          const SizedBox(width: 8),
-          MontantTexte(article.prixVenteHabituel, devise: devise, style: theme.textTheme.titleSmall),
         ]),
       ),
     );
   }
 }
 
-/// « 3 / 5 en stock », « Plus que 2 », « Épuisé ».
-/// Stock faible et épuisé : couleur attention + icône (charte).
+/// Ce qu'il reste, en quelques mots : « Il en reste 7 sur 10 » ; en ambre
+/// avec une icône (charte) : « Plus qu'une pièce », « Épuisé ».
 class BadgeStock extends StatelessWidget {
   const BadgeStock({super.key, required this.article});
 
@@ -67,16 +73,26 @@ class BadgeStock extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final vally = theme.extension<VallyColors>()!;
-    if (article.epuise) {
-      return Pastille(texte: 'Épuisé', icone: Icons.remove_shopping_cart_outlined, couleur: vally.attention);
+    final petit = theme.textTheme.bodySmall?.copyWith(fontSize: 12.5);
+    final a = article;
+    if (a.epuise || a.stockFaible) {
+      final n = a.quantiteRestante;
+      final texte = a.epuise ? 'Épuisé' : (n == 1 ? 'Plus qu’une pièce' : 'Plus que $n pièces');
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(a.epuise ? Icons.remove_shopping_cart_outlined : Icons.warning_amber_rounded,
+            size: 14, color: vally.attention),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(texte,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: petit?.copyWith(color: vally.attention, fontWeight: FontWeight.w600)),
+        ),
+      ]);
     }
-    if (article.stockFaible) {
-      return Pastille(
-          texte: 'Plus que ${article.quantiteRestante} en stock',
-          icone: Icons.warning_amber_rounded,
-          couleur: vally.attention);
-    }
-    return Text('${article.quantiteRestante} / ${article.quantiteAchetee} en stock',
-        style: theme.textTheme.bodySmall?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]));
+    return Text('Il en reste ${a.quantiteRestante} sur ${a.quantiteAchetee}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: petit?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]));
   }
 }

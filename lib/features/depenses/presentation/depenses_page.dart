@@ -157,7 +157,7 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
                     sousTitre: duMoisChoisi.isEmpty ? 'Aucun mouvement ce mois-ci' : null),
                 for (final MapEntry(key: jour, value: liste)
                     in _parJour(duMoisChoisi).entries) ...[
-                  EnTeteGroupe(titre: FormatDate.relatif(jour)),
+                  EnTeteGroupe(titre: FormatDate.titreJour(jour)),
                   Card(
                     clipBehavior: Clip.antiAlias,
                     child: Column(children: [

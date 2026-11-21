@@ -5,8 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/router/routes.dart';
+import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/elements.dart';
-import '../../../core/widgets/montant_texte.dart';
 import '../../../core/widgets/page_erreur.dart';
 import '../../../core/widgets/page_vide.dart';
 import '../../../theme/app_theme.dart';
@@ -15,7 +15,8 @@ import '../data/ventes_repository.dart';
 import '../domain/commande.dart';
 import 'widgets/commande_tuile.dart';
 
-/// Onglet Ventes : ventes au comptoir, regroupées par jour.
+/// Onglet Ventes : le cahier de caisse. Une page par jour, une ligne par
+/// vente (heure, client, montant), et le total du jour en bas.
 class VentesPage extends ConsumerStatefulWidget {
   const VentesPage({super.key});
 
@@ -60,7 +61,7 @@ class _VentesPageState extends ConsumerState<VentesPage> {
       ),
       body: commandes.when(
         skipLoadingOnRefresh: true,
-        loading: () => const ListeSquelette(),
+        loading: () => const ListeSquelette(avecResume: false, avecFiltres: true),
         error: (e, _) => PageErreur(
             erreur: e, onReessayer: () => ref.invalidate(commandesProvider)),
         data: (toutes) {
@@ -94,8 +95,10 @@ class _VentesPageState extends ConsumerState<VentesPage> {
                 SliverPadding(
                   padding: const EdgeInsets.all(VallySpace.s6),
                   sliver: SliverToBoxAdapter(
-                    child: Text('Aucune vente ne correspond.',
-                        textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+                    child: Text(_messageVide(),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                   ),
                 )
               else
@@ -104,49 +107,62 @@ class _VentesPageState extends ConsumerState<VentesPage> {
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: VallySpace.s4),
                     sliver: SliverList.list(children: [
-                      EnTeteGroupe(
-                        titre: FormatDate.relatif(jour),
-                        detail: _TotalJour(ventes: liste, devise: devise),
-                      ),
+                      EnTeteGroupe(titre: FormatDate.titreJour(jour)),
                       Card(
                         clipBehavior: Clip.antiAlias,
                         child: Column(children: [
                           for (final (i, v) in liste.indexed) ...[
-                            if (i > 0) const Divider(indent: 68),
+                            if (i > 0) const TraitRegistre(),
                             VenteTuile(
                               vente: v,
                               devise: devise,
                               onTap: () => context.push(Routes.vente(v.id)),
                             ),
                           ],
+                          ?_piedDuJour(liste, devise),
                         ]),
                       ),
                     ]),
                   ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: 28)),
             ]),
           );
         },
       ),
     );
   }
-}
 
-class _TotalJour extends StatelessWidget {
-  const _TotalJour({required this.ventes, required this.devise});
+  /// Bas de la page du jour : le total vendu, ou ce qu'il reste à encaisser
+  /// quand on ne regarde que les ventes non payées.
+  Widget? _piedDuJour(List<Commande> liste, Devise devise) {
+    switch (_filtre) {
+      case FiltreVentes.toutes:
+        final valides = liste.where((v) => !v.annulee).toList();
+        if (valides.isEmpty) return null;
+        final n = valides.length;
+        return PiedDeCarte(
+          libelle: 'Total · $n vente${n > 1 ? 's' : ''}',
+          montant: valides.fold<double>(0, (s, v) => s + v.total),
+          devise: devise,
+        );
+      case FiltreVentes.nonPayees:
+        return PiedDeCarte(
+          libelle: 'Reste à encaisser',
+          montant: liste.fold<double>(0, (s, v) => s + v.resteAPayer),
+          devise: devise,
+          sens: SensMontant.negatif,
+        );
+      case FiltreVentes.annulees:
+        return null;
+    }
+  }
 
-  final List<Commande> ventes;
-  final Devise devise;
-
-  @override
-  Widget build(BuildContext context) {
-    final valides = ventes.where((v) => !v.annulee);
-    final total = valides.fold<double>(0, (s, v) => s + v.total);
-    final n = valides.length;
-    final style = Theme.of(context).textTheme.labelMedium;
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text('$n vente${n > 1 ? 's' : ''} · ', style: style),
-      MontantTexte(total, devise: devise, style: style),
-    ]);
+  String _messageVide() {
+    if (_recherche.trim().isNotEmpty) return 'Aucune vente ne correspond à ta recherche.';
+    return switch (_filtre) {
+      FiltreVentes.toutes => 'Aucune vente ne correspond.',
+      FiltreVentes.nonPayees => 'Toutes tes ventes sont payées.',
+      FiltreVentes.annulees => 'Aucune vente annulée.',
+    };
   }
 }

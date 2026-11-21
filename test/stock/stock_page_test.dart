@@ -70,12 +70,19 @@ void main() {
       pyjama,
     ]);
 
-    // Valeur restante : (2 + 0 + 4 + 3) × 10 000 = 90 000 CDF.
-    expect(find.text('90 000 CDF'), findsOneWidget);
-    expect(find.text('Plus que 2 en stock'), findsOneWidget);
+    // Pièces restantes : 2 + 0 + 4 + 3 = 9, soit 9 × 10 000 = 90 000 CDF au prix d'achat.
+    final valeur = FormatMontant.formater(90000, Devise.cdf);
+    expect(find.textContaining('9 pièces en boutique, qui t’ont coûté $valeur.'), findsOneWidget);
+    expect(find.text('Plus que 2 pièces'), findsOneWidget);
     expect(find.text('Épuisé'), findsOneWidget);
-    expect(find.text('4 / 4 en stock'), findsOneWidget);
-    expect(find.text('1 épuisé · 1 bientôt épuisé'), findsOneWidget);
+    expect(find.text('Il en reste 4 sur 4'), findsOneWidget);
+    // Les articles épuisés ou presque passent en premier.
+    expect(find.text('Épuisés ou presque'), findsOneWidget);
+    expect(find.text('En boutique'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Robe pagne fleurie')).dy,
+      lessThan(tester.getTopLeft(find.text('Robe de soirée')).dy),
+    );
     expect(find.text('Enfant'), findsWidgets);
 
     await tester.tap(find.widgetWithText(FiltrePastille, 'Enfant'));

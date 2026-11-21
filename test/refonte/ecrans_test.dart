@@ -14,6 +14,7 @@ import 'package:vally_business/features/clients/presentation/client_detail_page.
 import 'package:vally_business/features/clients/presentation/clients_page.dart';
 import 'package:vally_business/features/plus/presentation/plus_page.dart';
 import 'package:vally_business/features/stock/data/stock_repository.dart';
+import 'package:vally_business/features/stock/presentation/stock_page.dart';
 import 'package:vally_business/features/ventes/data/ventes_repository.dart';
 import 'package:vally_business/features/ventes/domain/commande.dart';
 import 'package:vally_business/features/ventes/presentation/commande_detail_page.dart';
@@ -113,6 +114,7 @@ void main() {
     'Accueil': (const AccueilPage(), 'À faire'),
     'Ventes': (const VentesPage(), 'Vente'),
     'Commandes': (const CommandesPage(), 'Commande'),
+    'Stock': (const StockPage(), 'en boutique'),
     'Plus': (const PlusPage(), 'Clients et dettes'),
     'Clients': (const ClientsPage(), 'On te doit '),
     'Fiche client': (const ClientDetailPage(clientId: 'cl-Maman Rose Mbuyi Kalonji'), 'À encaisser'),

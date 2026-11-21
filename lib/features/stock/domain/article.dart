@@ -1,4 +1,5 @@
 import '../../../core/format/dates.dart';
+import '../../../core/format/montant.dart';
 
 /// En dessous de ce nombre de pièces restantes, le stock est « faible ».
 const seuilStockFaible = 2;
@@ -167,6 +168,19 @@ class ResumeStock {
       nbStockFaible: faibles,
     );
   }
+}
+
+/// Le stock en une phrase : « 8 pièces en boutique, qui t'ont coûté
+/// 80 000 CDF. Depuis le début, tu as investi 200 000 CDF. »
+String phraseStock(ResumeStock r, Devise devise) {
+  final valeur = FormatMontant.formater(r.valeurStockRestant, devise);
+  final investi = FormatMontant.formater(r.totalApprovisionne, devise);
+  final enBoutique = switch (r.piecesEnStock) {
+    <= 0 => 'Plus aucune pièce en boutique.',
+    1 => '1 pièce en boutique, qui t’a coûté $valeur.',
+    final n => '$n pièces en boutique, qui t’ont coûté $valeur.',
+  };
+  return '$enBoutique Depuis le début, tu as investi $investi.';
 }
 
 /// Adulte ou enfant (filtre du stock).

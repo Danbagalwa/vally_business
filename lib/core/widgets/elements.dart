@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../theme/app_theme.dart';
+import 'carnet.dart';
 
 /// Barre fixée en bas pour l'action principale : bouton 46 px pleine
 /// largeur (ou à droite d'un résumé), spinner quand c'est en cours.
@@ -245,7 +246,8 @@ class FiltrePastille extends StatelessWidget {
   }
 }
 
-/// En-tête de groupe dans une liste (« Aujourd'hui · 3 ventes »).
+/// En-tête d'un groupe dans une liste (« Aujourd'hui », « Jeudi 19 novembre »),
+/// comme le haut d'une page de cahier ; détail discret à droite.
 class EnTeteGroupe extends StatelessWidget {
   const EnTeteGroupe({super.key, required this.titre, this.detail, this.alerte = false});
 
@@ -254,25 +256,13 @@ class EnTeteGroupe extends StatelessWidget {
   final bool alerte;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final vally = theme.extension<VallyColors>()!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, VallySpace.s4, 4, VallySpace.s2),
-      child: Row(children: [
-        if (alerte) ...[
-          Icon(Icons.warning_amber_rounded, size: 16, color: vally.attention),
-          const SizedBox(width: 4),
-        ],
-        Expanded(
-          child: Text(titre,
-              style: theme.textTheme.labelLarge?.copyWith(
-                  color: alerte ? vally.attention : theme.colorScheme.onSurfaceVariant)),
-        ),
-        ?detail,
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => TitreSection(
+        titre,
+        detail: detail,
+        alerte: alerte,
+        taille: 16,
+        marge: const EdgeInsets.fromLTRB(2, 20, 2, 10),
+      );
 }
 
 /// Avatar rond avec initiales (fond rose à 12 %).
@@ -376,9 +366,22 @@ class Squelette extends StatelessWidget {
 
 /// Chargement d'un écran de liste : la forme du contenu, sans spinner.
 class ListeSquelette extends StatelessWidget {
-  const ListeSquelette({super.key, this.avecResume = true, this.lignes = 6});
+  const ListeSquelette({
+    super.key,
+    this.avecResume = true,
+    this.avecPhrase = false,
+    this.avecFiltres,
+    this.lignes = 6,
+  });
 
+  /// Bloc de résumé (carte) en haut.
   final bool avecResume;
+
+  /// Deux lignes de texte en haut (phrase de résumé).
+  final bool avecPhrase;
+
+  /// Rangée de filtres ; par défaut, seulement avec le résumé.
+  final bool? avecFiltres;
   final int lignes;
 
   @override
@@ -388,9 +391,17 @@ class ListeSquelette extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          if (avecPhrase) ...[
+            const Squelette(largeur: 280),
+            const SizedBox(height: 8),
+            const Squelette(largeur: 180),
+            const SizedBox(height: 16),
+          ],
           if (avecResume) ...[
             const Squelette(hauteur: 96, rayon: VallyRadius.lg),
             const SizedBox(height: 14),
+          ],
+          if (avecFiltres ?? avecResume) ...[
             const Row(children: [
               Squelette(largeur: 80, hauteur: 32, rayon: VallyRadius.lg),
               SizedBox(width: 8),

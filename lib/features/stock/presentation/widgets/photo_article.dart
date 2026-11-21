@@ -14,11 +14,13 @@ class PhotoArticle extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // Sans photo : un carré neutre et un cintre discret, pas d'aplat rose.
     final defaut = ColoredBox(
-      color: theme.colorScheme.primaryContainer,
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
       child: Center(
         child: Icon(Icons.checkroom_outlined,
-            size: taille * 0.45, color: theme.colorScheme.onPrimaryContainer),
+            size: taille * 0.42,
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
       ),
     );
 

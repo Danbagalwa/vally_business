@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/router/routes.dart';
+import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/montant_texte.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/theme_mode.dart';
@@ -76,7 +77,7 @@ class AccueilPage extends ConsumerWidget {
               ),
 
               // ─── À faire ───
-              _TitreSection(
+              TitreSection(
                 'À faire',
                 lien: taches.isEmpty ? null : 'Commandes',
                 onLien: () => context.go(Routes.commandes),
@@ -109,7 +110,7 @@ class AccueilPage extends ConsumerWidget {
                 ),
 
               // ─── On te doit ───
-              _TitreSection(
+              TitreSection(
                 'On te doit',
                 lien: debiteurs.isEmpty ? null : 'Tout voir',
                 onLien: () => context.push('${Routes.clients}?filtre=dettes'),
@@ -121,17 +122,18 @@ class AccueilPage extends ConsumerWidget {
                   clipBehavior: Clip.antiAlias,
                   child: Column(children: [
                     for (final (i, c) in debiteurs.take(3).indexed) ...[
-                      if (i > 0) const Divider(indent: 16, endIndent: 16),
+                      if (i > 0) const TraitRegistre(),
                       _LigneDette(
                         client: c,
                         devise: devise,
                         onTap: () => context.push(Routes.client(c.id)),
                       ),
                     ],
-                    _TotalDettes(
-                      total: totalDu,
-                      nbClients: debiteurs.length,
+                    PiedDeCarte(
+                      libelle: 'Total · ${debiteurs.length} client${debiteurs.length > 1 ? 's' : ''}',
+                      montant: totalDu,
                       devise: devise,
+                      sens: SensMontant.negatif,
                     ),
                   ]),
                 ),
@@ -164,12 +166,11 @@ class _EnTete extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final dateTexte = DateFormat('EEEE d MMMM', 'fr').format(date);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Expanded(
           child: Text(
-            dateTexte[0].toUpperCase() + dateTexte.substring(1),
+            FormatDate.jourLong(date, aujourdhui: date),
             style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ),
@@ -188,36 +189,8 @@ class _EnTete extends StatelessWidget {
         style: theme.textTheme.headlineSmall?.copyWith(fontSize: 26, height: 1.15, letterSpacing: -0.6),
       ),
       const SizedBox(height: 8),
-      _PhraseAvecChiffres(phrase),
+      PhraseAvecChiffres(phrase),
     ]);
-  }
-}
-
-/// La phrase du jour, avec les nombres mis en gras.
-class _PhraseAvecChiffres extends StatelessWidget {
-  const _PhraseAvecChiffres(this.phrase);
-
-  final String phrase;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final base = theme.textTheme.bodyLarge?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant, height: 1.4);
-    final fort = TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w700);
-    final morceaux = <InlineSpan>[];
-    phrase.splitMapJoin(
-      RegExp(r'\d+'),
-      onMatch: (m) {
-        morceaux.add(TextSpan(text: m[0], style: fort));
-        return '';
-      },
-      onNonMatch: (t) {
-        morceaux.add(TextSpan(text: t));
-        return '';
-      },
-    );
-    return Text.rich(TextSpan(children: morceaux), style: base);
   }
 }
 
@@ -399,39 +372,6 @@ class _RythmeSemaine extends StatelessWidget {
   }
 }
 
-/// Titre de section en phrase (pas en majuscules), lien aligné à droite.
-class _TitreSection extends StatelessWidget {
-  const _TitreSection(this.titre, {this.lien, this.onLien});
-
-  final String titre;
-  final String? lien;
-  final VoidCallback? onLien;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 28, bottom: 10),
-      child: Row(children: [
-        Expanded(
-          child: Text(titre, style: theme.textTheme.titleLarge?.copyWith(fontSize: 18)),
-        ),
-        if (lien != null)
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onLien,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-              child: Text(lien!,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
-            ),
-          ),
-      ]),
-    );
-  }
-}
-
 /// Quand il n'y a rien : une phrase calme, sans carte.
 class _Calme extends StatelessWidget {
   const _Calme(this.texte);
@@ -597,35 +537,6 @@ class _LigneDette extends StatelessWidget {
               style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
         ]),
       ),
-    );
-  }
-}
-
-/// Pied du cahier des dettes : le total et le nombre de clients.
-class _TotalDettes extends StatelessWidget {
-  const _TotalDettes({required this.total, required this.nbClients, required this.devise});
-
-  final double total;
-  final int nbClients;
-  final Devise devise;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      color: scheme.onSurface.withValues(alpha: 0.03),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(children: [
-        Expanded(
-          child: Text('Total · $nbClients client${nbClients > 1 ? 's' : ''}',
-              style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-        ),
-        MontantTexte(total,
-            devise: devise,
-            sens: SensMontant.negatif,
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-      ]),
     );
   }
 }

@@ -33,6 +33,34 @@ abstract final class FormatDate {
     return d.year == a.year ? 'le $texte' : 'le $texte ${d.year}';
   }
 
+  /// « Samedi 21 novembre », « Dimanche 1er novembre » ; l'année est
+  /// ajoutée si elle diffère de celle d'[aujourdhui].
+  static String jourLong(DateTime date, {DateTime? aujourdhui}) {
+    final a = aujourdhui ?? DateTime.now();
+    final numero = date.day == 1 ? '1er' : '${date.day}';
+    final texte = '${DateFormat('EEEE', 'fr').format(date)} $numero '
+        '${DateFormat('MMMM', 'fr').format(date)}'
+        '${date.year == a.year ? '' : ' ${date.year}'}';
+    return texte[0].toUpperCase() + texte.substring(1);
+  }
+
+  /// Titre d'un jour en tête de liste : « Aujourd'hui », « Hier », « Demain »,
+  /// sinon « Jeudi 19 novembre » (comme en haut d'une page de cahier).
+  static String titreJour(DateTime date, {DateTime? aujourdhui}) {
+    final a = jour(aujourdhui ?? DateTime.now());
+    final d = jour(date);
+    // Écart calculé en UTC : pas de décalage d'une heure au changement d'heure.
+    final ecart = DateTime.utc(d.year, d.month, d.day)
+        .difference(DateTime.utc(a.year, a.month, a.day))
+        .inDays;
+    return switch (ecart) {
+      0 => 'Aujourd’hui',
+      1 => 'Demain',
+      -1 => 'Hier',
+      _ => jourLong(d, aujourdhui: a),
+    };
+  }
+
   /// « Aujourd'hui », « Demain », « Hier », « lun. 24 nov. »
   /// (l'année n'est ajoutée que si elle diffère).
   static String relatif(DateTime date, {DateTime? aujourdhui}) {

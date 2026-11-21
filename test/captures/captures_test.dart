@@ -62,13 +62,15 @@ Future<void> _chargerPolices() async {
 
 String _jour(int decalage) => FormatDate.iso(DateTime.now().add(Duration(days: decalage)));
 
-Commande _vente(String id, int jour, num total, {String? client, num? paye, String heure = '10:15'}) {
+Commande _vente(String id, int jour, num total,
+    {String? client, num? paye, String heure = '10:15', bool annulee = false}) {
   final j = ligneVCommandes(
     id: id,
     clientNom: client,
     total: total,
     paye: paye ?? total,
-    statutPaiement: (paye ?? total) >= total ? 'soldee' : 'partiellement_payee',
+    statutPaiement: (paye ?? total) >= total ? 'soldee' : (paye == 0 ? 'non_payee' : 'partiellement_payee'),
+    statutLivraison: annulee ? 'annulee' : 'livree',
     date: _jour(jour),
   )..['created_at'] = '${_jour(jour)}T$heure:00';
   return Commande.fromJson(j);
@@ -82,6 +84,7 @@ final _commandes = <Commande>[
   // Les jours d'avant (semaine)
   _vente('v4', -1, 60000, client: 'Papa Jo'),
   _vente('v5', -1, 25000),
+  _vente('v5b', -1, 30000, client: 'Sandrine K.', heure: '16:30', annulee: true),
   _vente('v6', -2, 15000),
   _vente('v7', -3, 80000, client: 'Mme Kabila'),
   _vente('v8', -4, 22000),
@@ -118,6 +121,11 @@ final _articles = <Article>[
   article(nom: 'Robe pagne fleurie', quantiteAchetee: 6, quantiteVendue: 5),
   article(nom: 'Chemise wax homme', categorie: 'Chemise', quantiteAchetee: 4, quantiteVendue: 4),
   article(nom: 'Ensemble garçon', categorie: 'Ensemble', quantiteAchetee: 10, quantiteVendue: 3),
+  article(nom: 'Robe de soirée satin', quantiteAchetee: 4, quantiteVendue: 1),
+  Article.fromJson(ligneVStock(
+      nom: 'Pyjama ourson', categorie: 'Ensemble', taille: '2 ans', couleur: null, quantiteAchetee: 3)
+    ..['pour_enfant'] = true),
+  article(nom: 'Chemise lin blanche', categorie: 'Chemise', couleur: 'Blanc', quantiteAchetee: 6, quantiteVendue: 2),
 ];
 
 Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme, {double hauteur = 806}) async {
@@ -192,9 +200,11 @@ void main() {
     'plus': const PlusPage(),
   };
   for (final MapEntry(key: nom, value: page) in autres.entries) {
-    testWidgets('capture $nom (clair)', skip: ignorer != null, (tester) async {
-      await _afficher(tester, page, VallyTheme.light);
-      await _capturer(tester, nom);
-    });
+    for (final (variante, theme) in [('clair', VallyTheme.light), ('sombre', VallyTheme.dark)]) {
+      testWidgets('capture $nom ($variante)', skip: ignorer != null, (tester) async {
+        await _afficher(tester, page, theme);
+        await _capturer(tester, '${nom}_$variante');
+      });
+    }
   }
 }

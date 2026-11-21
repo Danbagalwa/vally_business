@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/format/montant.dart';
 import '../../../core/router/routes.dart';
+import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/elements.dart';
 import '../../../core/widgets/page_erreur.dart';
 import '../../../core/widgets/page_vide.dart';
@@ -11,9 +13,9 @@ import '../../boutique/data/boutique_repository.dart';
 import '../data/stock_repository.dart';
 import '../domain/article.dart';
 import 'widgets/article_tuile.dart';
-import 'widgets/carte_resume_stock.dart';
 
-/// Onglet Stock : valeur du stock, filtres adulte / enfant et catégorie.
+/// Onglet Stock : l'inventaire. Une phrase pour le résumé, les articles
+/// épuisés ou presque en premier, puis le reste de la boutique.
 class StockPage extends ConsumerStatefulWidget {
   const StockPage({super.key});
 
@@ -59,7 +61,7 @@ class _StockPageState extends ConsumerState<StockPage> {
       ),
       body: articles.when(
         skipLoadingOnRefresh: true,
-        loading: () => const ListeSquelette(),
+        loading: () => const ListeSquelette(avecResume: false, avecPhrase: true, avecFiltres: true),
         error: (e, _) =>
             PageErreur(erreur: e, onReessayer: () => ref.invalidate(articlesProvider)),
         data: (tous) {
@@ -76,17 +78,18 @@ class _StockPageState extends ConsumerState<StockPage> {
           final visibles = filtrerArticles(tous,
               recherche: _recherche, categorie: categorie, public: _public);
           final aEnfants = tous.any((a) => a.pourEnfant);
+          final aSurveiller = visibles.where((a) => a.epuise || a.stockFaible).toList();
+          final enBoutique = visibles.where((a) => !a.epuise && !a.stockFaible).toList();
 
           return RefreshIndicator(
             onRefresh: () => ref.refresh(articlesProvider.future),
             child: CustomScrollView(slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(VallySpace.s4, 8, VallySpace.s4, 0),
+                padding: const EdgeInsets.fromLTRB(VallySpace.s4, 2, VallySpace.s4, 10),
                 sliver: SliverToBoxAdapter(
-                  child: CarteResumeStock(resume: ResumeStock.depuis(tous), devise: devise),
+                  child: PhraseAvecChiffres(phraseStock(ResumeStock.depuis(tous), devise)),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: VallySpace.s2)),
               SliverToBoxAdapter(
                 child: RangeeFiltres(children: [
                   if (aEnfants) ...[
@@ -113,32 +116,65 @@ class _StockPageState extends ConsumerState<StockPage> {
                   padding: const EdgeInsets.all(VallySpace.s6),
                   sliver: SliverToBoxAdapter(
                     child: Text('Aucun article ne correspond.',
-                        textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                   ),
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(VallySpace.s4, VallySpace.s2, VallySpace.s4, 24),
-                  sliver: SliverToBoxAdapter(
-                    child: Card(
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(children: [
-                        for (final (i, a) in visibles.indexed) ...[
-                          if (i > 0) const Divider(indent: 72),
-                          ArticleTuile(
-                            article: a,
-                            devise: devise,
-                            onTap: () => context.push(Routes.article(a.id)),
-                          ),
-                        ],
-                      ]),
-                    ),
-                  ),
+                  padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, 28),
+                  sliver: SliverList.list(children: [
+                    if (aSurveiller.isNotEmpty) ...[
+                      EnTeteGroupe(
+                        titre: 'Épuisés ou presque',
+                        detail: Text('${aSurveiller.length}'),
+                      ),
+                      _Inventaire(articles: aSurveiller, devise: devise),
+                    ],
+                    if (enBoutique.isNotEmpty) ...[
+                      // Un seul groupe : pas besoin de titre.
+                      if (aSurveiller.isNotEmpty)
+                        EnTeteGroupe(
+                          titre: 'En boutique',
+                          detail: Text('${enBoutique.length}'),
+                        )
+                      else
+                        const SizedBox(height: 10),
+                      _Inventaire(articles: enBoutique, devise: devise),
+                    ],
+                  ]),
                 ),
             ]),
           );
         },
       ),
+    );
+  }
+}
+
+/// Une carte-registre d'articles, une ligne par article.
+class _Inventaire extends StatelessWidget {
+  const _Inventaire({required this.articles, required this.devise});
+
+  final List<Article> articles;
+  final Devise devise;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (final (i, a) in articles.indexed) ...[
+          // Le trait commence au texte, après la photo.
+          if (i > 0) const TraitRegistre(retrait: 76),
+          ArticleTuile(
+            article: a,
+            devise: devise,
+            onTap: () => context.push(Routes.article(a.id)),
+          ),
+        ],
+      ]),
     );
   }
 }

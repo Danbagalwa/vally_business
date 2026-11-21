@@ -79,7 +79,7 @@ class _CommandesPageState extends ConsumerState<CommandesPage> {
       ),
       body: commandes.when(
         skipLoadingOnRefresh: true,
-        loading: () => const ListeSquelette(),
+        loading: () => const ListeSquelette(avecResume: false, avecFiltres: true),
         error: (e, _) => PageErreur(
             erreur: e, onReessayer: () => ref.invalidate(commandesProvider)),
         data: (toutes) {
@@ -148,10 +148,10 @@ class _CommandesPageState extends ConsumerState<CommandesPage> {
                     padding: const EdgeInsets.symmetric(horizontal: VallySpace.s4),
                     sliver: SliverList.list(children: [
                       EnTeteGroupe(
-                        titre: FormatDate.relatif(jour),
+                        titre: FormatDate.titreJour(jour, aujourdhui: aujourdhui),
                         alerte: groupe.any((c) => c.estEnRetard(aujourdhui)),
-                        detail: Text('${groupe.length}',
-                            style: theme.textTheme.labelMedium),
+                        detail: Text(
+                            '${groupe.length} commande${groupe.length > 1 ? 's' : ''}'),
                       ),
                       for (final c in groupe) ...[
                         CommandeCarte(

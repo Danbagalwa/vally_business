@@ -2,12 +2,18 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/format/dates.dart';
 import '../../../../core/format/montant.dart';
-import '../../../../core/widgets/elements.dart';
 import '../../../../core/widgets/montant_texte.dart';
 import '../../../../theme/app_theme.dart';
 import '../../domain/commande.dart';
 
-/// Ligne compacte d'une vente au comptoir.
+/// Espace insécable : « 2 » et « pièces » restent sur la même ligne.
+final _insecable = String.fromCharCode(0xA0);
+
+/// « 1 pièce », « 2 pièces ».
+String _pieces(int n) => '$n${_insecable}pièce${n > 1 ? 's' : ''}';
+
+/// Une ligne du cahier de caisse : l'heure, le client, le montant, et
+/// dessous ce qu'il reste à encaisser.
 class VenteTuile extends StatelessWidget {
   const VenteTuile({super.key, required this.vente, required this.devise, this.onTap});
 
@@ -18,26 +24,61 @@ class VenteTuile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final c = vente;
-    return ListTile(
+    // Client de passage : écrit plus discrètement qu'un client connu.
+    final passage = c.clientNom == null;
+    final petit = theme.textTheme.bodySmall?.copyWith(fontSize: 12.5);
+
+    return InkWell(
       onTap: onTap,
-      leading: AvatarInitiales(_initiales(c.clientNom), taille: 36),
-      title: Text(c.nomAffiche, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-          '${FormatDate.heure(c.creeLe)} · ${c.nbPieces} pièce${c.nbPieces > 1 ? 's' : ''}'),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          MontantTexte(c.total,
-              devise: devise,
-              style: theme.textTheme.titleSmall?.copyWith(
-                  decoration: c.annulee ? TextDecoration.lineThrough : null)),
-          if (c.annulee || c.statutPaiement != StatutPaiement.soldee) ...[
-            const SizedBox(height: 2),
-            EtatPaiementTexte(commande: c, devise: devise),
-          ],
-        ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        // Heure, nom et montant sur la même ligne de base (tous en 14 px).
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 50,
+            child: Text(
+              FormatDate.heure(c.creeLe),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                c.nomAffiche,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: passage ? FontWeight.w400 : FontWeight.w600,
+                  color: passage ? scheme.onSurfaceVariant : null,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(_pieces(c.nbPieces), style: petit),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              MontantTexte(c.total,
+                  devise: devise,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: c.annulee ? scheme.onSurfaceVariant : null,
+                    decoration: c.annulee ? TextDecoration.lineThrough : null,
+                  )),
+              if (c.annulee || c.statutPaiement != StatutPaiement.soldee) ...[
+                const SizedBox(height: 2),
+                EtatPaiementTexte(commande: c, devise: devise, style: petit),
+              ],
+            ]),
+          ),
+        ]),
       ),
     );
   }
@@ -99,7 +140,11 @@ class CommandeCarte extends StatelessWidget {
     final scheme = theme.colorScheme;
     final vally = theme.extension<VallyColors>()!;
     final c = commande;
-    final retard = c.estEnRetard(aujourdhui ?? DateTime.now());
+    final maintenant = aujourdhui ?? DateTime.now();
+    final retard = c.estEnRetard(maintenant);
+    final joursRetard = !retard || c.dateLivraison == null
+        ? 0
+        : DateUtils.dateOnly(maintenant).difference(DateUtils.dateOnly(c.dateLivraison!)).inDays;
     final livraison = c.modeRemise == ModeRemise.livraison;
     final suivant = switch (c.statutLivraison) {
       StatutLivraison.enAttente => 'Marquer prête',
@@ -132,9 +177,10 @@ class CommandeCarte extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       [
-                        if (c.dateLivraison != null) FormatDate.relatif(c.dateLivraison!, aujourdhui: aujourdhui),
+                        // La date est déjà dans le titre du groupe : seul le retard est rappelé.
+                        if (joursRetard > 0) 'En retard de $joursRetard jour${joursRetard > 1 ? 's' : ''}',
                         if (livraison) (c.adresseLivraison ?? 'Livraison') else 'Retrait en boutique',
-                        '${c.nbPieces} pièce${c.nbPieces > 1 ? 's' : ''}',
+                        _pieces(c.nbPieces),
                       ].join(' · '),
                       style: petit?.copyWith(
                         color: retard ? vally.attention : null,
@@ -198,9 +244,4 @@ class CommandeCarte extends StatelessWidget {
       ),
     );
   }
-}
-
-String _initiales(String? nom) {
-  if (nom == null || nom.trim().isEmpty) return '';
-  return nom.trim().split(RegExp(r'\s+')).take(2).map((m) => m[0].toUpperCase()).join();
 }
