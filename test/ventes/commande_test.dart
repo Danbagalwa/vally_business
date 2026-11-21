@@ -39,6 +39,41 @@ void main() {
     expect(_c(ligneVCommandes()).estCommande, isFalse);
   });
 
+  group('Articles de chaque vente (colonne articles_resume)', () {
+    final e = String.fromCharCode(0xA0); // espace insécable
+
+    test('« Robe pagne fleurie, 2 × Chemise wax », dans l’ordre de saisie', () {
+      final c = _c(ligneVCommandes(articles: [
+        {'nom': 'Robe pagne fleurie', 'quantite': 1},
+        {'nom': 'Chemise wax', 'quantite': 2},
+      ]));
+      expect(c.articles, [(nom: 'Robe pagne fleurie', quantite: 1), (nom: 'Chemise wax', quantite: 2)]);
+      expect(c.resumeArticles, 'Robe pagne fleurie, 2$e×${e}Chemise wax');
+    });
+
+    test('base pas encore mise à jour, ou vente sans ligne : pas de résumé', () {
+      expect(_c(ligneVCommandes()).articles, isEmpty);
+      expect(_c(ligneVCommandes()).resumeArticles, isNull);
+      expect(_c(ligneVCommandes(articles: const [])).resumeArticles, isNull);
+    });
+
+    test('recherche par article, sans tenir compte des accents', () {
+      final toutes = [
+        _c(ligneVCommandes(id: 'v1', clientNom: 'Maman Josée', articles: [
+          {'nom': 'Robe de soirée', 'quantite': 1},
+        ])),
+        _c(ligneVCommandes(id: 'v2', clientNom: 'Papa Jo', articles: [
+          {'nom': 'Chemise wax', 'quantite': 3},
+        ])),
+      ];
+      List<String> ids(String r) => filtrerVentes(toutes, recherche: r).map((c) => c.id).toList();
+      expect(ids('soiree'), ['v1']);
+      expect(ids('WAX'), ['v2']);
+      expect(ids('josee'), ['v1']); // le nom du client aussi, sans accent
+      expect(ids('pantalon'), isEmpty);
+    });
+  });
+
   test('Paiement converti : garde le montant saisi et le taux', () {
     final p = Paiement.fromJson({
       'id': 'p1', 'montant': 14000, 'date_paiement': '2026-11-18', 'mode': 'mobile_money',

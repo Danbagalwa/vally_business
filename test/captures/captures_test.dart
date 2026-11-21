@@ -63,9 +63,10 @@ Future<void> _chargerPolices() async {
 String _jour(int decalage) => FormatDate.iso(DateTime.now().add(Duration(days: decalage)));
 
 Commande _vente(String id, int jour, num total,
-    {String? client, num? paye, String heure = '10:15', bool annulee = false}) {
+    {String? client, num? paye, String heure = '10:15', bool annulee = false, List<Map<String, Object>>? articles}) {
   final j = ligneVCommandes(
     id: id,
+    articles: articles,
     clientNom: client,
     total: total,
     paye: paye ?? total,
@@ -78,9 +79,16 @@ Commande _vente(String id, int jour, num total,
 
 final _commandes = <Commande>[
   // Aujourd'hui
-  _vente('v1', 0, 45000, client: 'Maman Rose', heure: '09:40'),
-  _vente('v2', 0, 18000, heure: '11:05'),
-  _vente('v3', 0, 32000, client: 'Grâce Mbuyi', paye: 20000, heure: '14:20'),
+  _vente('v1', 0, 45000, client: 'Maman Rose', heure: '09:40', articles: [
+    {'nom': 'Robe pagne fleurie', 'quantite': 1},
+    {'nom': 'Chemise wax homme', 'quantite': 2},
+  ]),
+  _vente('v2', 0, 18000, heure: '11:05', articles: [{'nom': 'Ensemble garçon', 'quantite': 1}]),
+  _vente('v3', 0, 32000, client: 'Grâce Mbuyi', paye: 20000, heure: '14:20', articles: [
+    {'nom': 'Robe de soirée satin', 'quantite': 1},
+    {'nom': 'Pyjama ourson', 'quantite': 1},
+    {'nom': 'Chemise lin blanche', 'quantite': 1},
+  ]),
   // Les jours d'avant (semaine)
   _vente('v4', -1, 60000, client: 'Papa Jo'),
   _vente('v5', -1, 25000),
@@ -94,7 +102,8 @@ final _commandes = <Commande>[
   Commande.fromJson(ligneVCommandes(
       id: 'k1', type: 'commande', statutLivraison: 'en_attente', clientNom: 'Mme Kabila',
       total: 25000, paye: 10000, frais: 3000, date: _jour(-2),
-      dateLivraison: _jour(0), modeRemise: 'livraison')),
+      dateLivraison: _jour(0), modeRemise: 'livraison',
+      articles: [{'nom': 'Robe pagne fleurie', 'quantite': 2}])),
   Commande.fromJson(ligneVCommandes(
       id: 'k2', type: 'commande', statutLivraison: 'prete', clientNom: 'Papa Jo',
       total: 38000, paye: 38000, statutPaiement: 'soldee', date: _jour(-4),

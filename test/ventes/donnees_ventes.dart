@@ -11,6 +11,7 @@ Map<String, dynamic> ligneVCommandes({
   String date = '2026-11-18',
   String? dateLivraison,
   String? modeRemise,
+  List<Map<String, Object>>? articles,
 }) =>
     {
       'id': id,
@@ -36,4 +37,6 @@ Map<String, dynamic> ligneVCommandes({
       'date_livraison': dateLivraison,
       'mode_remise': modeRemise,
       'adresse_livraison': modeRemise == 'livraison' ? 'Av. du Commerce 12' : null,
+      // Absente avant la mise à jour SQL du 21/11 : l'appli doit s'en passer.
+      'articles_resume': ?articles,
     };

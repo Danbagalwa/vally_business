@@ -328,5 +328,31 @@ await expectOk('v_commandes expose le numéro', () => as(A, `select numero from 
   (r) => /^\d{4}-\d{4}$/.test(r[0].numero));
 await expectErr('le compteur n’est pas lisible depuis l’appli', () => as(A, `select * from compteurs_factures`));
 
+console.log('\nArticles de chaque vente (cahier de caisse)');
+const [chemise] = await as(A, `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel)
+   values ('Chemise wax', 'Chemise', 'L', 4, 8000, 12000) returning id`);
+const [pagne] = await as(A, `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel)
+   values ('Pagne super wax', 'Pagne', 'Unique', 3, 9000, 14000) returning id`);
+const [venteArt] = await as(A, `insert into commandes default values returning id`);
+await as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+   values ($1, $2, 2, 12000, 0)`, [venteArt.id, chemise.id]);
+await as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+   values ($1, $2, 1, 14000, 0)`, [venteArt.id, pagne.id]);
+const parNom = (liste) => [...liste].sort((x, y) => x.nom.localeCompare(y.nom));
+await expectOk('v_commandes donne le nom et la quantité de chaque article', () => as(A,
+  `select articles_resume, nb_pieces, total from v_commandes where id = $1`, [venteArt.id]),
+  (r) => JSON.stringify(parNom(r[0].articles_resume)) ===
+           JSON.stringify([{ nom: 'Chemise wax', quantite: 2 }, { nom: 'Pagne super wax', quantite: 1 }])
+         && r[0].nb_pieces === 3 && Number(r[0].total) === 38000);
+await expectOk('les totaux ne changent pas avec la jointure sur les articles', () => as(A,
+  `select total, cout, benefice from v_commandes where id = $1`, [cmd1.id]),
+  (r) => Number(r[0].total) === 51000 && Number(r[0].cout) === 30000 && Number(r[0].benefice) === 21000);
+await expectOk('vente sans ligne : liste vide (jamais null)', async () => {
+  const [vide] = await as(A, `insert into commandes default values returning id`);
+  return as(A, `select articles_resume from v_commandes where id = $1`, [vide.id]);
+}, (r) => Array.isArray(r[0].articles_resume) && r[0].articles_resume.length === 0);
+await expectOk('C ne voit pas les articles vendus par Vally', () => as(C,
+  `select articles_resume from v_commandes where id = $1`, [venteArt.id]), (r) => r.length === 0);
+
 console.log(`\n${ok} réussis, ${ko} échoués`);
 process.exit(ko ? 1 : 0);

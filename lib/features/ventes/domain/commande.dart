@@ -1,5 +1,6 @@
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
+import '../../../core/format/texte.dart';
 
 /// Vente au comptoir (remise tout de suite) ou commande (remise plus tard).
 enum TypeCommande {
@@ -104,6 +105,7 @@ class Commande {
     this.modeRemise,
     this.adresseLivraison,
     this.fraisLivraison = 0,
+    this.articles = const [],
   });
 
   final String id;
@@ -140,6 +142,10 @@ class Commande {
   final String? adresseLivraison;
   final double fraisLivraison;
 
+  /// Articles vendus, dans l'ordre de saisie (colonne `articles_resume` de
+  /// v_commandes). Vide tant que la mise à jour SQL du 21/11 n'est pas faite.
+  final List<ArticleDeVente> articles;
+
   bool get estCommande => type == TypeCommande.commande;
   bool get annulee => statutLivraison == StatutLivraison.annulee;
   bool get livree => statutLivraison == StatutLivraison.livree;
@@ -168,6 +174,17 @@ class Commande {
 
   /// Encore de l'argent à recevoir (non annulée).
   bool get aEncaisser => !annulee && resteAPayer > 0;
+
+  /// Ce qui a été vendu, dit simplement : « Robe pagne fleurie,
+  /// 2 × Chemise wax ». Null si la liste n'est pas connue : on affiche
+  /// alors le nombre de pièces.
+  String? get resumeArticles {
+    if (articles.isEmpty) return null;
+    final e = espaceInsecable;
+    return articles
+        .map((a) => a.quantite > 1 ? '${a.quantite}$e×$e${a.nom}' : a.nom)
+        .join(', ');
+  }
 
   factory Commande.fromJson(Map<String, dynamic> json) => Commande(
         id: json['id'] as String,
@@ -200,8 +217,16 @@ class Commande {
         modeRemise: ModeRemise.depuisCode(json['mode_remise'] as String?),
         adresseLivraison: json['adresse_livraison'] as String?,
         fraisLivraison: _nombre(json['frais_livraison']),
+        articles: [
+          for (final a in (json['articles_resume'] as List?) ?? const [])
+            if (a is Map && a['nom'] is String)
+              (nom: a['nom'] as String, quantite: (a['quantite'] as num?)?.toInt() ?? 1),
+        ],
       );
 }
+
+/// Un article d'une vente, pour la liste : son nom et la quantité vendue.
+typedef ArticleDeVente = ({String nom, int quantite});
 
 /// Ligne d'une vente ou commande (prix figés au moment de la vente).
 class LigneCommande {
@@ -356,13 +381,16 @@ enum FiltreCommandes {
   }
 }
 
+/// Recherche par client, téléphone ou article vendu, sans tenir compte
+/// des accents (« josee » trouve « Maman Josée », « soiree » une robe de soirée).
 bool _correspond(Commande c, String recherche) {
-  final r = recherche.trim().toLowerCase();
+  final r = normaliserRecherche(recherche.trim());
   if (r.isEmpty) return true;
-  return c.nomAffiche.toLowerCase().contains(r) ||
+  return normaliserRecherche(c.nomAffiche).contains(r) ||
       (c.clientTelephone ?? '')
           .replaceAll(' ', '')
-          .contains(r.replaceAll(' ', ''));
+          .contains(r.replaceAll(' ', '')) ||
+      c.articles.any((a) => normaliserRecherche(a.nom).contains(r));
 }
 
 /// Ventes au comptoir filtrées, les plus récentes d'abord.

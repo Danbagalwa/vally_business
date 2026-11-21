@@ -2,18 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/format/dates.dart';
 import '../../../../core/format/montant.dart';
+import '../../../../core/format/texte.dart';
 import '../../../../core/widgets/montant_texte.dart';
 import '../../../../theme/app_theme.dart';
 import '../../domain/commande.dart';
 
-/// Espace insécable : « 2 » et « pièces » restent sur la même ligne.
-final _insecable = String.fromCharCode(0xA0);
-
-/// « 1 pièce », « 2 pièces ».
-String _pieces(int n) => '$n${_insecable}pièce${n > 1 ? 's' : ''}';
-
-/// Une ligne du cahier de caisse : l'heure, le client, le montant, et
-/// dessous ce qu'il reste à encaisser.
+/// Une ligne du cahier de caisse : l'heure, le client et le montant, puis
+/// ce qui a été vendu et ce qu'il reste à encaisser.
 class VenteTuile extends StatelessWidget {
   const VenteTuile({super.key, required this.vente, required this.devise, this.onTap});
 
@@ -29,6 +24,7 @@ class VenteTuile extends StatelessWidget {
     // Client de passage : écrit plus discrètement qu'un client connu.
     final passage = c.clientNom == null;
     final petit = theme.textTheme.bodySmall?.copyWith(fontSize: 12.5);
+    final avecEtat = c.annulee || c.statutPaiement != StatutPaiement.soldee;
 
     return InkWell(
       onTap: onTap,
@@ -48,34 +44,51 @@ class VenteTuile extends StatelessWidget {
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                c.nomAffiche,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: passage ? FontWeight.w400 : FontWeight.w600,
-                  color: passage ? scheme.onSurfaceVariant : null,
+              // Qui, et combien.
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Text(
+                    c.nomAffiche,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: passage ? FontWeight.w400 : FontWeight.w600,
+                      color: passage ? scheme.onSurfaceVariant : null,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: MontantTexte(c.total,
+                        devise: devise,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: c.annulee ? scheme.onSurfaceVariant : null,
+                          decoration: c.annulee ? TextDecoration.lineThrough : null,
+                        )),
+                  ),
+                ),
+              ]),
               const SizedBox(height: 2),
-              Text(_pieces(c.nbPieces), style: petit),
-            ]),
-          ),
-          const SizedBox(width: 12),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 150),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              MontantTexte(c.total,
-                  devise: devise,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: c.annulee ? scheme.onSurfaceVariant : null,
-                    decoration: c.annulee ? TextDecoration.lineThrough : null,
-                  )),
-              if (c.annulee || c.statutPaiement != StatutPaiement.soldee) ...[
-                const SizedBox(height: 2),
-                EtatPaiementTexte(commande: c, devise: devise, style: petit),
-              ],
+              // Quoi (les articles, sinon le nombre de pièces), et ce qu'il
+              // reste à payer. Une vente payée laisse toute la largeur aux articles.
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Text(c.resumeArticles ?? pieces(c.nbPieces),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: petit),
+                ),
+                if (avecEtat) ...[
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 150),
+                    child: EtatPaiementTexte(commande: c, devise: devise, style: petit),
+                  ),
+                ],
+              ]),
             ]),
           ),
         ]),
@@ -175,12 +188,20 @@ class CommandeCarte extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 3),
+                    // Ce qu'il faut préparer.
+                    if (c.resumeArticles case final articles?) ...[
+                      Text(articles,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: petit?.copyWith(color: scheme.onSurface)),
+                      const SizedBox(height: 2),
+                    ],
                     Text(
                       [
                         // La date est déjà dans le titre du groupe : seul le retard est rappelé.
                         if (joursRetard > 0) 'En retard de $joursRetard jour${joursRetard > 1 ? 's' : ''}',
                         if (livraison) (c.adresseLivraison ?? 'Livraison') else 'Retrait en boutique',
-                        _pieces(c.nbPieces),
+                        if (c.resumeArticles == null) pieces(c.nbPieces),
                       ].join(' · '),
                       style: petit?.copyWith(
                         color: retard ? vally.attention : null,

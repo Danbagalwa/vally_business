@@ -1,5 +1,6 @@
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
+import '../../../core/format/texte.dart';
 
 /// En dessous de ce nombre de pièces restantes, le stock est « faible ».
 const seuilStockFaible = 2;
@@ -214,7 +215,7 @@ List<Article> filtrerArticles(
   String? categorie,
   Public public = Public.tous,
 }) {
-  final mots = _normaliser(recherche)
+  final mots = normaliserRecherche(recherche)
       .split(' ')
       .where((m) => m.isNotEmpty)
       .toList();
@@ -222,7 +223,7 @@ List<Article> filtrerArticles(
     if (!public.garde(a)) return false;
     if (categorie != null && a.categorie != categorie) return false;
     if (mots.isEmpty) return true;
-    final texte = _normaliser(
+    final texte = normaliserRecherche(
         '${a.nom} ${a.categorie} ${a.taille} ${a.couleur ?? ''} ${a.fournisseur ?? ''}');
     return mots.every(texte.contains);
   }).toList();
@@ -231,17 +232,3 @@ List<Article> filtrerArticles(
 /// Catégories présentes, triées.
 List<String> categoriesDe(Iterable<Article> articles) =>
     (articles.map((a) => a.categorie).toSet().toList()..sort());
-
-String _normaliser(String texte) {
-  const accents = {
-    'à': 'a', 'â': 'a', 'ä': 'a', 'ç': 'c', 'é': 'e', 'è': 'e', 'ê': 'e',
-    'ë': 'e', 'î': 'i', 'ï': 'i', 'ô': 'o', 'ö': 'o', 'ù': 'u', 'û': 'u',
-    'ü': 'u', 'ÿ': 'y', 'œ': 'oe',
-  };
-  final bas = texte.toLowerCase();
-  final sortie = StringBuffer();
-  for (final c in bas.split('')) {
-    sortie.write(accents[c] ?? c);
-  }
-  return sortie.toString();
-}

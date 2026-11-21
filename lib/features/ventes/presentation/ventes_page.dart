@@ -42,7 +42,7 @@ class _VentesPageState extends ConsumerState<VentesPage> {
                 autofocus: true,
                 onChanged: (v) => setState(() => _recherche = v),
                 decoration: const InputDecoration(
-                    hintText: 'Client ou téléphone', border: InputBorder.none,
+                    hintText: 'Client, téléphone ou article', border: InputBorder.none,
                     enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
                     filled: false),
               )

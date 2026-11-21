@@ -95,7 +95,11 @@ void main() {
     final jour = FormatDate.iso(DateTime.now());
     final ventes = [
       Commande.fromJson(ligneVCommandes(
-          id: 'v1', date: jour, total: 30000, paye: 30000, statutPaiement: 'soldee')),
+          id: 'v1', date: jour, total: 30000, paye: 30000, statutPaiement: 'soldee',
+          articles: [
+            {'nom': 'Robe pagne fleurie', 'quantite': 1},
+            {'nom': 'Chemise wax', 'quantite': 2},
+          ])),
       Commande.fromJson(ligneVCommandes(id: 'v2', date: jour, total: 20000, paye: 5000)),
       Commande.fromJson(ligneVCommandes(
           id: 'v3', date: jour, total: 99000, statutLivraison: 'annulee')),
@@ -118,8 +122,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Aujourd’hui'), findsOneWidget);
-    // « 2 » et « pièces » liés par une espace insécable.
-    expect(find.text('2${String.fromCharCode(0xA0)}pièces'), findsNWidgets(3));
+    final e = String.fromCharCode(0xA0); // espace insécable
+    // Ce qui a été vendu, quand la base le fournit…
+    expect(find.text('Robe pagne fleurie, 2$e×${e}Chemise wax'), findsOneWidget);
+    // … sinon le nombre de pièces (« 2 » et « pièces » jamais séparés).
+    expect(find.text('2${e}pièces'), findsNWidgets(2));
     expect(find.text('Total · 2 ventes'), findsOneWidget);
     expect(find.text(FormatMontant.formater(50000, Devise.cdf)), findsOneWidget);
 
