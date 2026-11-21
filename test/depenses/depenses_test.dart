@@ -70,41 +70,137 @@ void main() {
     });
   });
 
+  group('Le carnet en mots', () {
+    final f = FormatMontant.formater;
+
+    test('phrase du mois', () {
+      expect(phraseMois(const Bilan(entrees: 206000, sorties: 161000), Devise.cdf, enCours: true),
+          'Tu as reçu ${f(206000, Devise.cdf)} et dépensé ${f(161000, Devise.cdf)}.');
+      expect(phraseMois(const Bilan(entrees: 0, sorties: 9000), Devise.cdf, enCours: true),
+          'Tu as dépensé ${f(9000, Devise.cdf)}.');
+      expect(phraseMois(const Bilan(entrees: 5000, sorties: 0), Devise.cdf, enCours: false),
+          'Tu as reçu ${f(5000, Devise.cdf)}, sans rien dépenser.');
+      expect(phraseMois(const Bilan(entrees: 0, sorties: 0), Devise.cdf, enCours: true),
+          'Rien de noté ce mois-ci.');
+      expect(phraseMois(const Bilan(entrees: 0, sorties: 0), Devise.cdf, enCours: false),
+          'Rien de noté ce mois-là.');
+    });
+
+    test('titre et détails d’une ligne (note, montant saisi dans l’autre devise)', () {
+      expect(_mouvements.first.titre, 'Bénéfice de la boutique');
+      expect(_mouvements.first.details, 'Pour le loyer');
+      expect(_mouvements[1].titre, 'Loyer');
+      expect(_mouvements[1].details, isNull);
+      final cadeau = Mouvement.fromJson({
+        'id': 'c', 'type': 'entree', 'montant': 56000, 'categorie': 'Cadeau',
+        'date_mouvement': '2026-11-15', 'note': 'Anniversaire', 'source': 'manuel',
+        'devise_saisie': 'USD', 'montant_saisi': 20, 'taux_change': 2800,
+        'created_at': '2026-11-15T10:00:00Z',
+      });
+      expect(cadeau.details,
+          'Anniversaire · ${f(20, Devise.usd)} au taux de ${f(2800, Devise.cdf)}');
+    });
+  });
+
   for (final (nom, theme) in [('clair', VallyTheme.light), ('sombre', VallyTheme.dark)]) {
     testWidgets('Mes dépenses s’affiche sans débordement à 360 px ($nom)', (tester) async {
-      tester.view.physicalSize = const Size(360, 1800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(ProviderScope(
-        overrides: [
-          utilisateurIdProvider.overrideWith((ref) => Stream.value('user-1')),
-          boutiqueProvider.overrideWith((ref) async => boutiqueTest),
-          mouvementsProvider.overrideWith((ref) async => _mouvements),
-          fluxMensuelProvider.overrideWith((ref) async => [
-                FluxMensuel(mois: DateTime(_ceMois.year, _ceMois.month), entrees: 120000, sorties: 120000, soldeCumule: 0),
-              ]),
-          indicateursActuelsProvider.overrideWith((ref) async => const IndicateursActuels(
-                valeurStockRestant: 0, piecesEnStock: 0, articlesEpuises: 0,
-                beneficeRealise: 350000, beneficeEncaisse: 300000,
-                beneficeVerse: 120000, beneficeDisponible: 180000, resteDu: 0,
-              )),
-        ],
-        child: MaterialApp(
-          theme: theme,
-          home: Consumer(
-            builder: (context, ref, _) =>
-                ref.watch(boutiqueProvider).hasValue ? const DepensesPage() : const SizedBox.shrink(),
-          ),
-        ),
-      ));
-      await tester.pumpAndSettle();
+      await _afficher(tester, theme: theme);
       expect(tester.takeException(), isNull);
-      expect(find.text('Me verser un bénéfice'), findsOneWidget);
-      // Disponible 180 000, en attente 50 000 (ventes pas encore payées).
-      expect(find.textContaining('180 000'), findsWidgets);
-      expect(find.textContaining('En attente de paiement'), findsOneWidget);
+      // Ce qu'il te reste : 120 000 reçus, 120 000 dépensés.
+      expect(find.text('Il te reste'), findsOneWidget);
+      // La boutique : 180 000 disponibles, 50 000 attendent que les clients paient.
+      expect(find.text('La boutique peut te verser'), findsOneWidget);
+      expect(find.text('Me verser'), findsOneWidget);
+      expect(find.textContaining(FormatMontant.nombre(180000, Devise.cdf)), findsWidgets);
+      expect(find.textContaining('quand tes clients auront tout payé'), findsOneWidget);
+      // Le carnet du mois.
       expect(find.text('Loyer'), findsWidgets);
-      expect(find.text('Versé depuis la boutique · Pour le loyer'), findsOneWidget);
+      expect(find.text('Bénéfice de la boutique'), findsOneWidget);
+      expect(find.text('Pour le loyer'), findsOneWidget);
+      expect(find.text('Reste du mois'), findsOneWidget);
     });
   }
+
+  testWidgets('supprimer une dépense demande toujours une confirmation', (tester) async {
+    final depot = _FauxDepenses();
+    await _afficher(tester, depot: depot);
+
+    Future<void> demanderSuppression() async {
+      // La ligne du carnet (plus haut, « Loyer » est aussi une barre de « Où part ton argent »).
+      await tester.tap(find.text('Loyer').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Supprimer'));
+      await tester.pumpAndSettle();
+      expect(find.text('Supprimer cette dépense ?'), findsOneWidget);
+    }
+
+    await demanderSuppression();
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+    expect(depot.supprimes, isEmpty);
+
+    await demanderSuppression();
+    await tester.tap(find.widgetWithText(FilledButton, 'Supprimer'));
+    await tester.pumpAndSettle();
+    expect(depot.supprimes, ['2']);
+  });
+
+  testWidgets('bénéfice de la boutique illisible : un message et « Réessayer »', (tester) async {
+    await _afficher(tester, benefice: () async => throw Exception('réseau'));
+    expect(find.text('Impossible de lire le bénéfice de la boutique.'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
+    // Le carnet reste lisible.
+    expect(find.text('Il te reste'), findsOneWidget);
+  });
+}
+
+/// Faux dépôt : retient les suppressions demandées, ne touche à rien d'autre.
+class _FauxDepenses implements DepensesRepository {
+  final supprimes = <String>[];
+
+  @override
+  Future<void> supprimer(String id) async => supprimes.add(id);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+const _benefice = IndicateursActuels(
+  valeurStockRestant: 0, piecesEnStock: 0, articlesEpuises: 0,
+  beneficeRealise: 350000, beneficeEncaisse: 300000,
+  beneficeVerse: 120000, beneficeDisponible: 180000, resteDu: 0,
+);
+
+Future<void> _afficher(
+  WidgetTester tester, {
+  ThemeData? theme,
+  Future<IndicateursActuels> Function()? benefice,
+  DepensesRepository? depot,
+}) async {
+  tester.view.physicalSize = const Size(360, 1800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(ProviderScope(
+    // Pas de nouvel essai automatique en test : une erreur reste une erreur.
+    retry: (_, _) => null,
+    overrides: [
+      utilisateurIdProvider.overrideWith((ref) => Stream.value('user-1')),
+      boutiqueProvider.overrideWith((ref) async => boutiqueTest),
+      mouvementsProvider.overrideWith((ref) async => _mouvements),
+      fluxMensuelProvider.overrideWith((ref) async => [
+            FluxMensuel(
+                mois: DateTime(_ceMois.year, _ceMois.month), entrees: 120000, sorties: 120000, soldeCumule: 0),
+          ]),
+      indicateursActuelsProvider.overrideWith((ref) => (benefice ?? () async => _benefice)()),
+      if (depot != null) depensesRepositoryProvider.overrideWithValue(depot),
+    ],
+    child: MaterialApp(
+      theme: theme ?? VallyTheme.light,
+      home: Consumer(
+        builder: (context, ref, _) =>
+            ref.watch(boutiqueProvider).hasValue ? const DepensesPage() : const SizedBox.shrink(),
+      ),
+    ),
+  ));
+  await tester.pumpAndSettle();
 }

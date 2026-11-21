@@ -1,9 +1,11 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
+import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/elements.dart';
 import '../../../core/widgets/montant_texte.dart';
 import '../../../core/widgets/page_erreur.dart';
@@ -16,7 +18,7 @@ import '../data/depenses_repository.dart';
 import '../domain/mouvement.dart';
 import 'widgets/feuilles_depenses.dart';
 
-/// Mes dépenses : argent personnel, séparé de la boutique.
+/// Mes dépenses : le carnet de ton argent à toi, séparé de la boutique.
 /// Seul « Me verser un bénéfice » y fait entrer de l'argent de la boutique.
 class DepensesPage extends ConsumerStatefulWidget {
   const DepensesPage({super.key});
@@ -27,6 +29,9 @@ class DepensesPage extends ConsumerStatefulWidget {
 
 class _DepensesPageState extends ConsumerState<DepensesPage> {
   DateTime _mois = DateTime(DateTime.now().year, DateTime.now().month);
+
+  /// Titre du mois : on y remonte quand on choisit un mois plus bas.
+  final _cleMois = GlobalKey();
 
   DepensesRepository get _repo => ref.read(depensesRepositoryProvider);
 
@@ -44,7 +49,7 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
     final saisie = await demanderMouvement(context, boutique: b);
     if (saisie == null) return;
     await _executer(() => _repo.ajouter(saisie),
-        saisie.type == TypeMouvement.sortie ? 'Sortie enregistrée.' : 'Entrée enregistrée.');
+        saisie.type == TypeMouvement.sortie ? 'Dépense notée.' : 'Entrée notée.');
   }
 
   Future<void> _verser(Boutique b, double disponible) async {
@@ -57,10 +62,27 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
   }
 
   Future<void> _ouvrir(Mouvement m, Boutique b) async {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Ce sur quoi on agit, pour ne pas se tromper de ligne.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Row(children: [
+              Expanded(
+                child: Text(m.titre,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium),
+              ),
+              const SizedBox(width: 12),
+              MontantTexte(m.montant,
+                  devise: b.devise,
+                  sens: m.estEntree ? SensMontant.positif : SensMontant.negatif,
+                  style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+            ]),
+          ),
           if (!m.depuisBoutique)
             ListTile(
               leading: const Icon(Icons.edit_outlined),
@@ -68,9 +90,12 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
               onTap: () => Navigator.pop(context, 'modifier'),
             ),
           ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: Text(m.depuisBoutique ? 'Annuler ce versement' : 'Supprimer'),
-            subtitle: m.depuisBoutique ? const Text('Le montant redevient disponible dans la boutique.') : null,
+            leading: Icon(m.depuisBoutique ? Icons.undo : Icons.delete_outline, color: scheme.error),
+            title: Text(m.depuisBoutique ? 'Rendre à la boutique' : 'Supprimer',
+                style: TextStyle(color: scheme.error)),
+            subtitle: m.depuisBoutique
+                ? const Text('Le montant redevient disponible dans la boutique.')
+                : null,
             onTap: () => Navigator.pop(context, 'supprimer'),
           ),
         ]),
@@ -79,11 +104,39 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
     if (!mounted || action == null) return;
     if (action == 'modifier') {
       final saisie = await demanderMouvement(context, boutique: b, existant: m);
-      if (saisie != null) await _executer(() => _repo.modifier(m.id, saisie), 'Mouvement modifié.');
-    } else {
-      await _executer(() => _repo.supprimer(m.id),
-          m.depuisBoutique ? 'Versement annulé.' : 'Mouvement supprimé.');
+      if (saisie != null) await _executer(() => _repo.modifier(m.id, saisie), 'Modification enregistrée.');
+      return;
     }
+    // Supprimer se confirme toujours : on ne perd pas une ligne d'un geste.
+    final montant = FormatMontant.formater(m.montant, b.devise);
+    final ok = await confirmer(
+      context,
+      titre: m.depuisBoutique
+          ? 'Rendre ce versement à la boutique ?'
+          : (m.estEntree ? 'Supprimer cette entrée ?' : 'Supprimer cette dépense ?'),
+      message: m.depuisBoutique
+          ? 'Les $montant sortent de ton carnet et redeviennent disponibles dans la boutique.'
+          : '${m.titre}, $montant (${FormatDate.ilYa(m.date)}). Elle sera retirée de ton carnet.',
+      bouton: m.depuisBoutique ? 'Rendre à la boutique' : 'Supprimer',
+      destructif: true,
+    );
+    if (!ok || !mounted) return;
+    await _executer(() => _repo.supprimer(m.id),
+        m.depuisBoutique ? 'Versement rendu à la boutique.' : 'Retiré de ton carnet.');
+  }
+
+  /// Change de mois (flèches, ou un mois touché plus bas) et remonte au titre.
+  void _allerAuMois(DateTime mois, {bool remonter = false}) {
+    HapticFeedback.selectionClick();
+    setState(() => _mois = DateTime(mois.year, mois.month));
+    if (!remonter) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cible = _cleMois.currentContext;
+      if (cible != null && cible.mounted) {
+        Scrollable.ensureVisible(cible,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+      }
+    });
   }
 
   @override
@@ -92,86 +145,105 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
     final boutique = ref.watch(boutiqueActiveProvider);
     final devise = boutique.devise;
     final mouvements = ref.watch(mouvementsProvider);
-    final actuels = ref.watch(indicateursActuelsProvider).value;
+    final benefice = ref.watch(indicateursActuelsProvider);
     final maintenant = DateTime.now();
     final moisCourant = DateTime(maintenant.year, maintenant.month);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mes dépenses'), actions: [
-        BoutonAjout(libelle: 'Ajouter', tooltip: 'Ajouter une entrée ou une sortie', onPressed: () => _ajouter(boutique)),
+        BoutonAjout(
+            libelle: 'Ajouter',
+            tooltip: 'Noter une dépense ou une entrée',
+            onPressed: () => _ajouter(boutique)),
       ]),
       body: mouvements.when(
         skipLoadingOnRefresh: true,
-        loading: () => const ListeSquelette(),
+        loading: () => const ListeSquelette(avecFiltres: false),
         error: (e, _) => PageErreur(erreur: e, onReessayer: () => ref.invalidate(mouvementsProvider)),
         data: (tous) {
-          final total = Bilan.de(tous);
           final duMoisChoisi = duMois(tous, _mois);
           final bilanMois = Bilan.de(duMoisChoisi);
           final repartition = repartitionSorties(duMoisChoisi);
+          final enCours = _mois == moisCourant;
+
           return RefreshIndicator(
-            onRefresh: () => ref.refresh(mouvementsProvider.future),
+            onRefresh: () {
+              ref.invalidate(indicateursActuelsProvider);
+              return ref.refresh(mouvementsProvider.future);
+            },
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(VallySpace.s4, 0, VallySpace.s4, 24),
+              padding: const EdgeInsets.fromLTRB(VallySpace.s4, 4, VallySpace.s4, 32),
               children: [
-                _CarteSolde(bilan: total, devise: devise),
-                const SizedBox(height: VallySpace.s2),
-                _CarteBenefice(
-                  actuels: actuels,
+                _CarteArgent(
+                  bilan: tous.isEmpty ? null : Bilan.de(tous),
                   devise: devise,
-                  onVerser: actuels == null || actuels.beneficeDisponible <= 0
-                      ? null
-                      : () => _verser(boutique, actuels.beneficeDisponible),
+                  boutique: _Boutique(
+                    benefice: benefice,
+                    devise: devise,
+                    onVerser: (disponible) => _verser(boutique, disponible),
+                    onReessayer: () => ref.invalidate(indicateursActuelsProvider),
+                  ),
                 ),
-                const SizedBox(height: VallySpace.s4),
-
-                // ─── Mois ───
-                Row(children: [
-                  IconButton(
-                    tooltip: 'Mois précédent',
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: () => setState(() => _mois = DateTime(_mois.year, _mois.month - 1)),
-                  ),
-                  Expanded(
-                    child: Text(_majuscule(DateFormat('MMMM y', 'fr').format(_mois)),
-                        textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
-                  ),
-                  IconButton(
-                    tooltip: 'Mois suivant',
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: _mois == moisCourant
-                        ? null
-                        : () => setState(() => _mois = DateTime(_mois.year, _mois.month + 1)),
-                  ),
-                ]),
-                _BilanMois(bilan: bilanMois, devise: devise),
-
-                if (repartition.isNotEmpty) ...[
-                  const SizedBox(height: VallySpace.s6),
-                  const EnTeteSection('Où part l’argent', sousTitre: 'Sorties du mois par catégorie'),
-                  _Repartition(parts: repartition, devise: devise),
-                ],
-
-                const SizedBox(height: VallySpace.s6),
-                EnTeteSection('Mouvements',
-                    sousTitre: duMoisChoisi.isEmpty ? 'Aucun mouvement ce mois-ci' : null),
-                for (final MapEntry(key: jour, value: liste)
-                    in _parJour(duMoisChoisi).entries) ...[
-                  EnTeteGroupe(titre: FormatDate.titreJour(jour)),
-                  Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(children: [
-                      for (final (i, m) in liste.indexed) ...[
-                        if (i > 0) const Divider(indent: 56),
-                        _LigneMouvement(mouvement: m, devise: devise, onTap: () => _ouvrir(m, boutique)),
-                      ],
+                if (tous.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 28, 12, 0),
+                    child: Text(
+                      'Note ici ton argent à toi : ce que tu reçois et ce que tu dépenses. '
+                      'Touche + en haut pour commencer.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4),
+                    ),
+                  )
+                else ...[
+                  // ─── Le mois choisi ───
+                  TitreSection(
+                    _titreMois(_mois, maintenant),
+                    key: _cleMois,
+                    detail: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        tooltip: 'Mois précédent',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () => _allerAuMois(DateTime(_mois.year, _mois.month - 1)),
+                      ),
+                      IconButton(
+                        tooltip: 'Mois suivant',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: enCours
+                            ? null
+                            : () => _allerAuMois(DateTime(_mois.year, _mois.month + 1)),
+                      ),
                     ]),
                   ),
-                ],
+                  PhraseAvecChiffres(phraseMois(bilanMois, devise, enCours: enCours)),
+                  if (repartition.isNotEmpty) ...[
+                    const EnTeteGroupe(titre: 'Où part ton argent'),
+                    _Repartition(parts: repartition, devise: devise),
+                  ],
+                  if (duMoisChoisi.isNotEmpty) ...[
+                    EnTeteGroupe(
+                      titre: 'Le détail',
+                      detail: Text('${duMoisChoisi.length} ligne${duMoisChoisi.length > 1 ? 's' : ''}'),
+                    ),
+                    _Carnet(
+                      mouvements: duMoisChoisi,
+                      bilan: bilanMois,
+                      devise: devise,
+                      onTap: (m) => _ouvrir(m, boutique),
+                    ),
+                  ],
 
-                const SizedBox(height: VallySpace.s6),
-                const EnTeteSection('Flux par mois'),
-                _FluxMensuel(devise: devise),
+                  // ─── Les mois d'avant ───
+                  const EnTeteGroupe(titre: 'Tes dépenses, mois par mois'),
+                  _MoisParMois(
+                    devise: devise,
+                    moisChoisi: _mois,
+                    maintenant: maintenant,
+                    onChoisir: (m) => _allerAuMois(m, remonter: true),
+                  ),
+                ],
               ],
             ),
           );
@@ -179,151 +251,181 @@ class _DepensesPageState extends ConsumerState<DepensesPage> {
       ),
     );
   }
+}
 
-  static Map<DateTime, List<Mouvement>> _parJour(List<Mouvement> liste) {
-    final g = <DateTime, List<Mouvement>>{};
-    for (final m in liste) {
-      g.putIfAbsent(FormatDate.jour(m.date), () => []).add(m);
-    }
-    return g;
-  }
-
-  static String _majuscule(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+/// « Novembre », ou « Décembre 2025 » pour une autre année.
+String _titreMois(DateTime mois, DateTime maintenant) {
+  final t = DateFormat(mois.year == maintenant.year ? 'MMMM' : 'MMMM y', 'fr').format(mois);
+  return t[0].toUpperCase() + t.substring(1);
 }
 
 SensMontant _sens(double v) =>
-    v > 0 ? SensMontant.positif : (v < 0 ? SensMontant.negatif : SensMontant.neutre);
+    v > 0.005 ? SensMontant.positif : (v < -0.005 ? SensMontant.negatif : SensMontant.neutre);
 
-class _CarteSolde extends StatelessWidget {
-  const _CarteSolde({required this.bilan, required this.devise});
+/// En haut : ce qu'il te reste, puis ce que la boutique peut te verser.
+class _CarteArgent extends StatelessWidget {
+  const _CarteArgent({required this.bilan, required this.devise, required this.boutique});
 
-  final Bilan bilan;
+  /// Null tant que rien n'est noté : seule la partie boutique s'affiche.
+  final Bilan? bilan;
   final Devise devise;
+  final Widget boutique;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final vally = theme.extension<VallyColors>()!;
+    final b = bilan;
+    final aDecouvert = b != null && b.solde < -0.005;
+    const tabulaires = [FontFeature.tabularFigures()];
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Solde', style: theme.textTheme.bodySmall),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: MontantTexte(bilan.solde.abs(),
-                devise: devise, sens: _sens(bilan.solde), style: theme.textTheme.displaySmall),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (b != null) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(aDecouvert ? 'Tu as dépensé plus que reçu' : 'Il te reste',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: '${aDecouvert ? '− ' : ''}${FormatMontant.nombre(b.solde, devise)}'),
+                    TextSpan(
+                      text: ' ${devise.code}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600, letterSpacing: 0),
+                    ),
+                  ]),
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontSize: 34,
+                    height: 1.05,
+                    letterSpacing: -1,
+                    fontFeatures: tabulaires,
+                    color: aDecouvert ? vally.attention : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TexteAvecMontants([
+                'Depuis le début : reçu ',
+                spanMontant(context, b.entrees, devise,
+                    sens: b.entrees > 0.005 ? SensMontant.positif : SensMontant.neutre),
+                ', dépensé ',
+                spanMontant(context, b.sorties, devise,
+                    sens: b.sorties > 0.005 ? SensMontant.negatif : SensMontant.neutre),
+                '.',
+              ], style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5)),
+            ]),
           ),
-          const SizedBox(height: 2),
-          TexteAvecMontants([
-            'Entrées ',
-            spanMontant(context, bilan.entrees, devise, sens: bilan.entrees > 0 ? SensMontant.positif : SensMontant.neutre),
-            '  ·  Sorties ',
-            spanMontant(context, bilan.sorties, devise, sens: bilan.sorties > 0 ? SensMontant.negatif : SensMontant.neutre),
-          ]),
-        ]),
-      ),
+          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        ],
+        boutique,
+      ]),
     );
   }
 }
 
-/// Bénéfice de la boutique : encaissé, déjà versé, disponible, en attente.
-class _CarteBenefice extends StatelessWidget {
-  const _CarteBenefice({required this.actuels, required this.devise, required this.onVerser});
+/// Ce que la boutique peut te verser : le bénéfice des ventes payées en
+/// entier, moins ce qui t'a déjà été versé. Le reste attend les clients.
+class _Boutique extends StatelessWidget {
+  const _Boutique({
+    required this.benefice,
+    required this.devise,
+    required this.onVerser,
+    required this.onReessayer,
+  });
 
-  final IndicateursActuels? actuels;
+  final AsyncValue<IndicateursActuels> benefice;
   final Devise devise;
-  final VoidCallback? onVerser;
+  final void Function(double disponible) onVerser;
+  final VoidCallback onReessayer;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final a = actuels;
-    final enAttente = a == null ? 0.0 : (a.beneficeRealise - a.beneficeEncaisse);
-    return Card(
-      color: theme.colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.storefront_outlined, size: 18, color: theme.colorScheme.onPrimaryContainer),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text('Bénéfice de la boutique',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
-            ),
+    final scheme = theme.colorScheme;
+    final petit = theme.textTheme.bodySmall?.copyWith(fontSize: 12.5);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 14, 16),
+      child: benefice.when(
+        skipLoadingOnRefresh: true,
+        loading: () => const ExcludeSemantics(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Squelette(largeur: 170),
+            SizedBox(height: 8),
+            Squelette(largeur: 110, hauteur: 18),
           ]),
-          const SizedBox(height: VallySpace.s2),
-          if (a == null)
-            const LinearProgressIndicator()
-          else ...[
-            TexteAvecMontants([
-              'Disponible ',
-              spanMontant(context, a.beneficeDisponible.abs(), devise,
-                  sens: _sens(a.beneficeDisponible), gras: true),
-            ], style: theme.textTheme.titleMedium),
-            TexteAvecMontants([
-              'Déjà versé ',
-              spanMontant(context, a.beneficeVerse, devise),
-              if (enAttente > 0.005) ...[
-                '  ·  En attente de paiement ',
-                spanMontant(context, enAttente, devise),
+        ),
+        // Plus de barre qui tourne sans fin : on dit ce qui se passe.
+        error: (e, _) => Row(children: [
+          Expanded(child: Text('Impossible de lire le bénéfice de la boutique.', style: petit)),
+          TextButton(onPressed: onReessayer, child: const Text('Réessayer')),
+        ]),
+        data: (a) {
+          final disponible = a.beneficeDisponible;
+          final peutVerser = disponible > 0.005;
+          final enAttente = a.beneficeRealise - a.beneficeEncaisse;
+          final details = [
+            if (a.beneficeVerse > 0.005) 'Déjà versé : ${FormatMontant.formater(a.beneficeVerse, devise)}.',
+            if (enAttente > 0.005)
+              'Encore ${FormatMontant.formater(enAttente, devise)} quand tes clients auront tout payé.',
+          ].join(' ');
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(peutVerser ? 'La boutique peut te verser' : 'Rien à te verser pour l’instant',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                  if (peutVerser) ...[
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: MontantTexte(disponible,
+                          devise: devise,
+                          sens: SensMontant.positif,
+                          style: theme.textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ]),
+              ),
+              if (peutVerser) ...[
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    onVerser(disponible);
+                  },
+                  // Rose pâle, comme le « + » : présent sans crier.
+                  style: FilledButton.styleFrom(
+                    backgroundColor: scheme.primaryContainer,
+                    foregroundColor: scheme.onPrimaryContainer,
+                    minimumSize: const Size(64, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  child: const Text('Me verser'),
+                ),
               ],
             ]),
-          ],
-          const SizedBox(height: VallySpace.s2 + VallySpace.s1),
-          FilledButton.icon(
-            onPressed: onVerser,
-            icon: const Icon(Icons.south_west, size: 18),
-            label: const Text('Me verser un bénéfice'),
-          ),
-        ]),
+            if (details.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(details, style: petit?.copyWith(height: 1.35)),
+            ],
+          ]);
+        },
       ),
     );
   }
 }
 
-class _BilanMois extends StatelessWidget {
-  const _BilanMois({required this.bilan, required this.devise});
-
-  final Bilan bilan;
-  final Devise devise;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    Widget bloc(String libelle, double montant, SensMontant sens) => Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(libelle, style: theme.textTheme.bodySmall),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: MontantTexte(montant,
-                      devise: devise,
-                      sens: montant.abs() < 0.005 ? SensMontant.neutre : sens,
-                      style: theme.textTheme.titleSmall),
-                ),
-              ]),
-            ),
-          ),
-        );
-    return Row(children: [
-      bloc('Entrées', bilan.entrees, SensMontant.positif),
-      const SizedBox(width: 6),
-      bloc('Sorties', bilan.sorties, SensMontant.negatif),
-      const SizedBox(width: 6),
-      bloc('Solde du mois', bilan.solde.abs(), _sens(bilan.solde)),
-    ]);
-  }
-}
-
-/// Barres horizontales : une seule série (couleur graphique), libellés en texte.
+/// Où part l'argent du mois : une barre par catégorie, la plus grosse d'abord.
 class _Repartition extends StatelessWidget {
   const _Repartition({required this.parts, required this.devise});
 
@@ -332,38 +434,18 @@ class _Repartition extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final vally = theme.extension<VallyColors>()!;
     final max = parts.first.montant;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Column(children: [
           for (final p in parts)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(p.categorie,
-                        style: theme.textTheme.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                  Text('${(p.part * 100).round()} %  ',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-                  MontantTexte(p.montant, devise: devise, style: theme.textTheme.bodyMedium),
-                ]),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: max == 0 ? 0 : p.montant / max,
-                    minHeight: 6,
-                    color: vally.graphique,
-                    backgroundColor: theme.colorScheme.outlineVariant,
-                  ),
-                ),
-              ]),
+            _LigneBarre(
+              libelle: p.categorie,
+              montant: p.montant,
+              devise: devise,
+              valeur: max == 0 ? 0 : p.montant / max,
+              pourcentage: (p.part * 100).round(),
             ),
         ]),
       ),
@@ -371,105 +453,232 @@ class _Repartition extends StatelessWidget {
   }
 }
 
-class _LigneMouvement extends StatelessWidget {
-  const _LigneMouvement({required this.mouvement, required this.devise, required this.onTap});
+/// Une ligne avec sa barre : libellé, montant, et une barre proportionnelle
+/// (une seule couleur, celle des graphiques). Touchable si [onTap] est donné.
+class _LigneBarre extends StatelessWidget {
+  const _LigneBarre({
+    required this.libelle,
+    required this.montant,
+    required this.devise,
+    required this.valeur,
+    this.pourcentage,
+    this.actif = false,
+    this.onTap,
+  });
+
+  final String libelle;
+  final double montant;
+  final Devise devise;
+
+  /// Longueur de la barre, entre 0 et 1.
+  final double valeur;
+  final int? pourcentage;
+
+  /// Ligne en cours (le mois ouvert) : libellé en rose.
+  final bool actif;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final vally = theme.extension<VallyColors>()!;
+    final contenu = Padding(
+      padding: EdgeInsets.fromLTRB(16, 8, onTap == null ? 16 : 10, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Text(libelle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: actif ? scheme.primary : null,
+                  fontWeight: actif ? FontWeight.w600 : null,
+                )),
+          ),
+          if (pourcentage != null) ...[
+            Text('$pourcentage %',
+                style: theme.textTheme.bodySmall?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+            const SizedBox(width: 10),
+          ],
+          MontantTexte(montant,
+              devise: devise, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+          if (onTap != null) ...[
+            const SizedBox(width: 2),
+            Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
+          ],
+        ]),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: valeur.clamp(0, 1).toDouble(),
+            minHeight: 5,
+            color: vally.graphique,
+            backgroundColor: scheme.onSurface.withValues(alpha: 0.06),
+          ),
+        ),
+      ]),
+    );
+    return onTap == null ? contenu : InkWell(onTap: onTap, child: contenu);
+  }
+}
+
+/// La page du mois dans le carnet : une ligne par entrée ou dépense, la date
+/// écrite une seule fois par jour, et ce qu'il reste du mois en bas.
+class _Carnet extends StatelessWidget {
+  const _Carnet({
+    required this.mouvements,
+    required this.bilan,
+    required this.devise,
+    required this.onTap,
+  });
+
+  final List<Mouvement> mouvements;
+  final Bilan bilan;
+  final Devise devise;
+  final void Function(Mouvement) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (final (i, m) in mouvements.indexed) ...[
+          if (i > 0)
+            // Même jour : trait court, aligné sur le texte ; nouveau jour : trait entier.
+            TraitRegistre(
+                retrait: DateUtils.isSameDay(mouvements[i - 1].date, m.date) ? _LigneCarnet.retraitTexte : 16),
+          _LigneCarnet(
+            mouvement: m,
+            devise: devise,
+            afficherDate: i == 0 || !DateUtils.isSameDay(mouvements[i - 1].date, m.date),
+            onTap: () => onTap(m),
+          ),
+        ],
+        PiedDeCarte(
+          libelle: 'Reste du mois',
+          montant: bilan.solde.abs(),
+          devise: devise,
+          sens: _sens(bilan.solde),
+        ),
+      ]),
+    );
+  }
+}
+
+class _LigneCarnet extends StatelessWidget {
+  const _LigneCarnet({
+    required this.mouvement,
+    required this.devise,
+    required this.afficherDate,
+    required this.onTap,
+  });
+
+  /// Début du texte (16 + colonne de la date 44).
+  static const retraitTexte = 60.0;
+  static final _jourSemaine = DateFormat('EEE', 'fr');
 
   final Mouvement mouvement;
   final Devise devise;
+  final bool afficherDate;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final vally = theme.extension<VallyColors>()!;
+    final scheme = theme.colorScheme;
     final m = mouvement;
-    final details = [
-      if (m.depuisBoutique) 'Versé depuis la boutique',
-      if (m.note != null) m.note!,
-      if (m.tauxChange != null)
-        '${FormatMontant.formater(m.montantSaisi, m.deviseSaisie)} à ${FormatMontant.formater(m.tauxChange!, Devise.cdf)}',
-    ];
-    return ListTile(
+    final details = m.details;
+    return InkWell(
       onTap: onTap,
-      leading: CircleAvatar(
-        radius: 18,
-        backgroundColor: (m.estEntree ? vally.benefice : vally.attention).withValues(alpha: 0.12),
-        child: Icon(
-          m.depuisBoutique
-              ? Icons.storefront_outlined
-              : (m.estEntree ? Icons.arrow_downward : Icons.arrow_upward),
-          size: 18,
-          color: m.estEntree ? vally.benefice : vally.attention,
-        ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // La date, une fois par jour, comme dans un cahier.
+          SizedBox(
+            width: 44,
+            child: afficherDate
+                ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${m.date.day}',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                    Text(_jourSemaine.format(m.date), style: theme.textTheme.bodySmall),
+                  ])
+                : null,
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Text(m.titre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 12),
+                MontantTexte(m.montant,
+                    devise: devise,
+                    sens: m.estEntree ? SensMontant.positif : SensMontant.negatif,
+                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+              ]),
+              if (details != null) ...[
+                const SizedBox(height: 2),
+                Text(details,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+              ],
+            ]),
+          ),
+        ]),
       ),
-      title: Text(m.categorie, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: details.isEmpty ? null : Text(details.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: MontantTexte(m.montant,
-          devise: devise,
-          sens: m.estEntree ? SensMontant.positif : SensMontant.negatif,
-          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
     );
   }
 }
 
-/// Tableau des derniers mois : entrées, sorties, solde du mois.
-class _FluxMensuel extends ConsumerWidget {
-  const _FluxMensuel({required this.devise});
+/// Ce que tu as dépensé chacun des six derniers mois, en barres ; toucher un
+/// mois l'ouvre plus haut (avec ce que tu as reçu et ce qu'il en reste).
+class _MoisParMois extends ConsumerWidget {
+  const _MoisParMois({
+    required this.devise,
+    required this.moisChoisi,
+    required this.maintenant,
+    required this.onChoisir,
+  });
 
   final Devise devise;
+  final DateTime moisChoisi;
+  final DateTime maintenant;
+  final void Function(DateTime mois) onChoisir;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final petit = theme.textTheme.bodySmall?.copyWith(fontSize: 12.5);
     return ref.watch(fluxMensuelProvider).when(
           skipLoadingOnRefresh: true,
-          loading: () => const LinearProgressIndicator(),
-          error: (e, _) => Text('Flux indisponible.', style: theme.textTheme.bodySmall),
+          loading: () => const Squelette(hauteur: 120, rayon: VallyRadius.md),
+          error: (e, _) => Text('Impossible de charger les mois précédents.', style: petit),
           data: (mois) {
-            if (mois.isEmpty) {
-              return Text('Les mois apparaîtront après ton premier mouvement.',
-                  style: theme.textTheme.bodySmall);
-            }
-            final petit = theme.textTheme.bodySmall;
+            final six = mois.take(6).toList();
+            if (six.isEmpty) return const SizedBox.shrink();
+            final max = six.fold<double>(0, (m, f) => f.sorties > m ? f.sorties : m);
             return Card(
+              clipBehavior: Clip.antiAlias,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Column(children: [
-                  for (final (i, f) in mois.take(6).indexed) ...[
-                    if (i > 0) const Divider(height: 12),
-                    Row(children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(DateFormat('MMM y', 'fr').format(f.mois), style: theme.textTheme.bodyMedium),
-                      ),
-                      Expanded(
-                        flex: 4,
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          MontantTexte(f.entrees,
-                              devise: devise,
-                              sens: f.entrees > 0 ? SensMontant.positif : SensMontant.neutre,
-                              style: petit),
-                          MontantTexte(f.sorties,
-                              devise: devise,
-                              sens: f.sorties > 0 ? SensMontant.negatif : SensMontant.neutre,
-                              style: petit),
-                        ]),
-                      ),
-                      Expanded(
-                        flex: 4,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: MontantTexte(f.solde.abs(),
-                                devise: devise,
-                                sens: _sens(f.solde),
-                                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ),
-                    ]),
-                  ],
+                  for (final f in six)
+                    _LigneBarre(
+                      libelle: _titreMois(f.mois, maintenant),
+                      montant: f.sorties,
+                      devise: devise,
+                      valeur: max == 0 ? 0 : f.sorties / max,
+                      actif: f.mois.year == moisChoisi.year && f.mois.month == moisChoisi.month,
+                      onTap: () => onChoisir(f.mois),
+                    ),
                 ]),
               ),
             );

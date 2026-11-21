@@ -26,8 +26,13 @@ import 'package:vally_business/features/ventes/presentation/ventes_page.dart';
 import 'package:vally_business/features/boutique/data/boutique_repository.dart';
 import 'package:vally_business/features/clients/data/clients_repository.dart';
 import 'package:vally_business/features/clients/domain/client_resume.dart';
+import 'package:vally_business/features/depenses/data/depenses_repository.dart';
+import 'package:vally_business/features/depenses/domain/mouvement.dart';
+import 'package:vally_business/features/depenses/presentation/depenses_page.dart';
 import 'package:vally_business/features/stock/data/stock_repository.dart';
 import 'package:vally_business/features/stock/domain/article.dart';
+import 'package:vally_business/features/tableau_de_bord/data/tableau_de_bord_repository.dart';
+import 'package:vally_business/features/tableau_de_bord/domain/indicateurs.dart';
 import 'package:vally_business/features/ventes/data/ventes_repository.dart';
 import 'package:vally_business/features/ventes/domain/commande.dart';
 import 'package:vally_business/theme/app_theme.dart';
@@ -137,6 +142,49 @@ final _articles = <Article>[
   article(nom: 'Chemise lin blanche', categorie: 'Chemise', couleur: 'Blanc', quantiteAchetee: 6, quantiteVendue: 2),
 ];
 
+// ─── Mes dépenses ───
+/// Un jour du mois en cours (jamais avant le 1er), pour garder la démo dans le mois.
+String _jourDuMois(int recul) {
+  final n = DateTime.now();
+  return FormatDate.iso(DateTime(n.year, n.month, (n.day - recul).clamp(1, 31)));
+}
+
+Mouvement _mouvement(String id, String type, num montant, String categorie, String date,
+        {String source = 'manuel', String? note, String devise = 'CDF', num? saisi, num? taux}) =>
+    Mouvement.fromJson({
+      'id': id, 'type': type, 'montant': montant, 'categorie': categorie,
+      'date_mouvement': date, 'note': note, 'source': source,
+      'devise_saisie': devise, 'montant_saisi': saisi ?? montant, 'taux_change': taux,
+      'created_at': '${date}T10:00:00Z',
+    });
+
+final _mouvements = <Mouvement>[
+  _mouvement('m1', 'sortie', 12000, 'Transport', _jourDuMois(0), note: 'Taxi-moto, marché central'),
+  _mouvement('m2', 'sortie', 25000, 'Nourriture', _jourDuMois(1)),
+  _mouvement('m3', 'entree', 150000, 'Bénéfice boutique', _jourDuMois(2), source: 'boutique', note: 'Pour le loyer'),
+  _mouvement('m4', 'sortie', 80000, 'Loyer', _jourDuMois(2)),
+  _mouvement('m5', 'sortie', 35000, 'École', _jourDuMois(5), note: 'Frais scolaires'),
+  _mouvement('m6', 'entree', 56000, 'Cadeau', _jourDuMois(6), devise: 'USD', saisi: 20, taux: 2800),
+  _mouvement('m7', 'sortie', 9000, 'Factures', _jourDuMois(6), note: 'Électricité'),
+];
+
+List<FluxMensuel> _flux() {
+  final n = DateTime.now();
+  DateTime mois(int recul) => DateTime(n.year, n.month - recul);
+  return [
+    FluxMensuel(mois: mois(0), entrees: 206000, sorties: 161000, soldeCumule: 98000),
+    FluxMensuel(mois: mois(1), entrees: 180000, sorties: 195000, soldeCumule: 53000),
+    FluxMensuel(mois: mois(2), entrees: 140000, sorties: 92000, soldeCumule: 68000),
+    FluxMensuel(mois: mois(3), entrees: 60000, sorties: 40000, soldeCumule: 20000),
+  ];
+}
+
+const _indicateurs = IndicateursActuels(
+  valeurStockRestant: 180000, piecesEnStock: 18, articlesEpuises: 1,
+  beneficeRealise: 390000, beneficeEncaisse: 340000,
+  beneficeVerse: 150000, beneficeDisponible: 190000, resteDu: 67000,
+);
+
 Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme, {double hauteur = 806}) async {
   tester.view.physicalSize = Size(720, hauteur * 2);
   tester.view.devicePixelRatio = 2;
@@ -151,6 +199,9 @@ Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme, {doubl
         articlesProvider.overrideWith((ref) async => _articles),
         commandesProvider.overrideWith((ref) async => _commandes),
         clientsResumeProvider.overrideWith((ref) async => _clients),
+        mouvementsProvider.overrideWith((ref) async => _mouvements),
+        fluxMensuelProvider.overrideWith((ref) async => _flux()),
+        indicateursActuelsProvider.overrideWith((ref) async => _indicateurs),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -208,6 +259,21 @@ void main() {
     'stock': const StockPage(),
     'plus': const PlusPage(),
   };
+  testWidgets('capture depenses_saisie (clair)', skip: ignorer != null, (tester) async {
+    await _afficher(tester, const DepensesPage(), VallyTheme.light);
+    await tester.tap(find.byTooltip('Noter une dépense ou une entrée'));
+    await tester.pumpAndSettle();
+    await _capturer(tester, 'depenses_saisie_clair');
+  });
+
+  // Mes dépenses : page entière (longue), en clair et en sombre.
+  for (final (variante, theme) in [('clair', VallyTheme.light), ('sombre', VallyTheme.dark)]) {
+    testWidgets('capture depenses ($variante)', skip: ignorer != null, (tester) async {
+      await _afficher(tester, const DepensesPage(), theme, hauteur: 1700);
+      await _capturer(tester, 'depenses_$variante');
+    });
+  }
+
   for (final MapEntry(key: nom, value: page) in autres.entries) {
     for (final (variante, theme) in [('clair', VallyTheme.light), ('sombre', VallyTheme.dark)]) {
       testWidgets('capture $nom ($variante)', skip: ignorer != null, (tester) async {

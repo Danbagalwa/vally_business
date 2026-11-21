@@ -91,18 +91,21 @@ class _FeuilleMouvementState extends State<_FeuilleMouvement> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(widget.existant == null ? 'Nouveau mouvement' : 'Modifier', style: theme.textTheme.titleMedium),
+              // Le titre suit ce qu'on est en train de noter.
+              Text(
+                switch ((widget.existant == null, _type)) {
+                  (true, TypeMouvement.sortie) => 'Nouvelle dépense',
+                  (true, TypeMouvement.entree) => 'Nouvelle entrée d’argent',
+                  (false, TypeMouvement.sortie) => 'Modifier la dépense',
+                  (false, TypeMouvement.entree) => 'Modifier l’entrée',
+                },
+                style: theme.textTheme.titleLarge,
+              ),
               const SizedBox(height: VallySpace.s4),
               SegmentedButton<TypeMouvement>(
                 segments: const [
-                  ButtonSegment(
-                      value: TypeMouvement.sortie,
-                      icon: Icon(Icons.arrow_upward, size: 18),
-                      label: Text('Sortie')),
-                  ButtonSegment(
-                      value: TypeMouvement.entree,
-                      icon: Icon(Icons.arrow_downward, size: 18),
-                      label: Text('Entrée')),
+                  ButtonSegment(value: TypeMouvement.sortie, label: Text('J’ai dépensé')),
+                  ButtonSegment(value: TypeMouvement.entree, label: Text('J’ai reçu')),
                 ],
                 selected: {_type},
                 showSelectedIcon: false,
@@ -120,8 +123,13 @@ class _FeuilleMouvementState extends State<_FeuilleMouvement> {
               TextFormField(
                 controller: _categorie,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Catégorie'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Choisis une catégorie.' : null,
+                decoration: InputDecoration(
+                  labelText: _type == TypeMouvement.sortie ? 'Pour quoi ?' : 'D’où vient cet argent ?',
+                  hintText: _type == TypeMouvement.sortie ? 'Ex. : Loyer' : 'Ex. : Cadeau',
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Écris ou choisis une catégorie ci-dessous.'
+                    : null,
               ),
               const SizedBox(height: VallySpace.s2),
               ListenableBuilder(
@@ -248,14 +256,15 @@ class _FeuilleVersementState extends State<_FeuilleVersement> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Me verser un bénéfice', style: theme.textTheme.titleMedium),
+            Text('Me verser un bénéfice', style: theme.textTheme.titleLarge),
             const SizedBox(height: VallySpace.s2),
             TexteAvecMontants([
-              'Disponible : ',
+              'Tu peux te verser jusqu’à ',
               spanMontant(context, widget.disponible, devise, sens: SensMontant.positif, gras: true),
-              '  ≈ ${FormatMontant.formater(FormatMontant.convertir(widget.disponible, de: devise, vers: devise.autre, tauxUsdVersCdf: widget.boutique.tauxUsdCdf), devise.autre)}',
+              ', soit environ ${FormatMontant.formater(FormatMontant.convertir(widget.disponible, de: devise, vers: devise.autre, tauxUsdVersCdf: widget.boutique.tauxUsdCdf), devise.autre)}.',
             ], style: theme.textTheme.bodyMedium),
-            Text('Seul le bénéfice des ventes payées en entier peut être versé.',
+            const SizedBox(height: 2),
+            Text('Seul le bénéfice des ventes payées en entier compte.',
                 style: theme.textTheme.bodySmall),
             const SizedBox(height: VallySpace.s4),
             ChampMontant(

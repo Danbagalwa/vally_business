@@ -59,6 +59,21 @@ class Mouvement {
   /// Montant signé : + pour une entrée, − pour une sortie.
   double get signe => estEntree ? montant : -montant;
 
+  /// Ce qu'on lit sur la ligne du carnet.
+  String get titre => depuisBoutique ? 'Bénéfice de la boutique' : categorie;
+
+  /// La note et, si le montant a été saisi dans l'autre devise, la
+  /// conversion : « Pour le loyer · 20,00 USD au taux de 2 800 CDF ».
+  String? get details {
+    final morceaux = [
+      if (note != null && note!.trim().isNotEmpty) note!.trim(),
+      if (tauxChange != null)
+        '${FormatMontant.formater(montantSaisi, deviseSaisie)} au taux de '
+            '${FormatMontant.formater(tauxChange!, Devise.cdf)}',
+    ];
+    return morceaux.isEmpty ? null : morceaux.join(' · ');
+  }
+
   factory Mouvement.fromJson(Map<String, dynamic> j) => Mouvement(
         id: j['id'] as String,
         type: TypeMouvement.depuisCode(j['type'] as String),
@@ -122,6 +137,17 @@ class Bilan {
     }
     return Bilan(entrees: e, sorties: s);
   }
+}
+
+/// Le mois en une phrase : « Tu as reçu 206 000 CDF et dépensé 161 000 CDF. »
+String phraseMois(Bilan b, Devise devise, {required bool enCours}) {
+  final recu = b.entrees > 0.005;
+  final depense = b.sorties > 0.005;
+  final e = FormatMontant.formater(b.entrees, devise);
+  final s = FormatMontant.formater(b.sorties, devise);
+  if (!recu && !depense) return enCours ? 'Rien de noté ce mois-ci.' : 'Rien de noté ce mois-là.';
+  if (recu && depense) return 'Tu as reçu $e et dépensé $s.';
+  return recu ? 'Tu as reçu $e, sans rien dépenser.' : 'Tu as dépensé $s.';
 }
 
 /// Une catégorie de sorties et sa part du total.
