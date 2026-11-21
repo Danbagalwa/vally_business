@@ -66,6 +66,11 @@ abstract final class FormatMontant {
     return '$signe$valeur$_espace${devise.code}';
   }
 
+  /// Le nombre seul, sans signe ni code devise : « 95 000 », « 12,50 »
+  /// (pour composer un grand chiffre avec la devise en plus petit).
+  static String nombre(num montant, Devise devise) =>
+      formater(montant.abs(), devise).replaceAll('$_espace${devise.code}', '');
+
   /// Lit un montant saisi : « 15 000 », « 12,5 », « 12.50 » → nombre.
   /// Retourne null si la saisie est vide ou invalide.
   static double? lire(String saisie) {

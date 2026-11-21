@@ -64,3 +64,6 @@ supabase/.branches/
 # Tests SQL
 supabase/tests/node_modules/
 supabase/tests/package-lock.json
+
+# Captures d’écran de relecture du design (test/captures)
+/captures/

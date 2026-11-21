@@ -6,7 +6,6 @@ import '../../../../core/widgets/elements.dart';
 import '../../../../core/widgets/montant_texte.dart';
 import '../../../../theme/app_theme.dart';
 import '../../domain/commande.dart';
-import 'badges_commande.dart';
 
 /// Ligne compacte d'une vente au comptoir.
 class VenteTuile extends StatelessWidget {
@@ -36,11 +35,42 @@ class VenteTuile extends StatelessWidget {
                   decoration: c.annulee ? TextDecoration.lineThrough : null)),
           if (c.annulee || c.statutPaiement != StatutPaiement.soldee) ...[
             const SizedBox(height: 2),
-            BadgePaiement(commande: c, devise: devise),
+            EtatPaiementTexte(commande: c, devise: devise),
           ],
         ],
       ),
     );
+  }
+}
+
+/// État du paiement en quelques mots, sans pastille :
+/// « reste − 12 000 CDF » (ambre), « non payée » (ambre), « payée » (vert),
+/// « annulée » (gris).
+class EtatPaiementTexte extends StatelessWidget {
+  const EtatPaiementTexte({super.key, required this.commande, required this.devise, this.style});
+
+  final Commande commande;
+  final Devise devise;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final vally = theme.extension<VallyColors>()!;
+    final base = (style ?? theme.textTheme.bodySmall)?.copyWith(fontWeight: FontWeight.w600);
+    final c = commande;
+    if (c.annulee) {
+      return Text('annulée', style: base?.copyWith(color: theme.colorScheme.onSurfaceVariant));
+    }
+    return switch (c.statutPaiement) {
+      StatutPaiement.soldee => Text('payée', style: base?.copyWith(color: vally.benefice)),
+      StatutPaiement.nonPayee => Text('non payée', style: base?.copyWith(color: vally.attention)),
+      StatutPaiement.partiellementPayee => TexteAvecMontants(
+          ['reste ', spanMontant(context, c.resteAPayer, devise, sens: SensMontant.negatif)],
+          maxLines: 1,
+          style: base?.copyWith(color: vally.attention),
+        ),
+    };
   }
 }
 
@@ -66,6 +96,7 @@ class CommandeCarte extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final vally = theme.extension<VallyColors>()!;
     final c = commande;
     final retard = c.estEnRetard(aujourdhui ?? DateTime.now());
@@ -75,54 +106,80 @@ class CommandeCarte extends StatelessWidget {
       StatutLivraison.prete => 'Marquer livrée',
       _ => null,
     };
+    final couleurEtat = switch (c.statutLivraison) {
+      StatutLivraison.livree => vally.benefice,
+      StatutLivraison.annulee => scheme.onSurfaceVariant,
+      _ => scheme.primary,
+    };
+    final petit = theme.textTheme.bodySmall?.copyWith(fontSize: 12.5);
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
-                  child: Text(c.nomAffiche,
-                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(c.nomAffiche,
+                        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 3),
+                    Text(
+                      [
+                        if (c.dateLivraison != null) FormatDate.relatif(c.dateLivraison!, aujourdhui: aujourdhui),
+                        if (livraison) (c.adresseLivraison ?? 'Livraison') else 'Retrait en boutique',
+                        '${c.nbPieces} pièce${c.nbPieces > 1 ? 's' : ''}',
+                      ].join(' · '),
+                      style: petit?.copyWith(
+                        color: retard ? vally.attention : null,
+                        fontWeight: retard ? FontWeight.w600 : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ]),
                 ),
-                const SizedBox(width: 8),
-                MontantTexte(c.total, devise: devise, style: theme.textTheme.titleSmall),
-                const SizedBox(width: 8),
-              ]),
-              const SizedBox(height: 4),
-              Row(children: [
-                Icon(livraison ? Icons.local_shipping_outlined : Icons.storefront_outlined,
-                    size: 15, color: retard ? vally.attention : theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    [
-                      if (c.dateLivraison != null) FormatDate.relatif(c.dateLivraison!, aujourdhui: aujourdhui),
-                      if (livraison) (c.adresseLivraison ?? 'Livraison') else 'Retrait',
-                      '${c.nbPieces} pièce${c.nbPieces > 1 ? 's' : ''}',
-                    ].join(' · '),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: retard ? vally.attention : null),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 12),
+                // Montant, et en dessous ce qu'il reste à payer (comme pour une vente).
+                // Largeur bornée : le nom du client garde toujours de la place.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: MontantTexte(c.total, devise: devise, style: theme.textTheme.titleSmall),
+                      ),
+                      if (!c.annulee && c.statutPaiement != StatutPaiement.soldee) ...[
+                        const SizedBox(height: 3),
+                        EtatPaiementTexte(commande: c, devise: devise, style: petit),
+                      ],
+                    ]),
                   ),
                 ),
               ]),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Row(children: [
+                // Point de couleur + état de la commande.
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(color: couleurEtat, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
                 Expanded(
-                  child: Wrap(spacing: 6, runSpacing: 4, children: [
-                    PastilleLivraison(statut: c.statutLivraison),
-                    if (!c.annulee && c.statutPaiement != StatutPaiement.soldee)
-                      BadgePaiement(commande: c, devise: devise),
-                  ]),
+                  child: Text(c.statutLivraison.libelle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: petit?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600)),
                 ),
                 if (suivant != null && onAvancer != null)
                   TextButton(
@@ -131,7 +188,9 @@ class CommandeCarte extends StatelessWidget {
                         minimumSize: const Size(40, 32),
                         visualDensity: VisualDensity.compact),
                     child: Text(suivant),
-                  ),
+                  )
+                else
+                  const SizedBox(height: 32),
               ]),
             ],
           ),

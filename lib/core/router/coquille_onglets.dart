@@ -52,7 +52,7 @@ class CoquilleOnglets extends ConsumerWidget {
       },
       child: Scaffold(
         body: navigationShell,
-        bottomNavigationBar: _BarreDuBas(
+        bottomNavigationBar: BarreOnglets(
           index: navigationShell.currentIndex,
           badges: {2: aLivrer},
           onTap: _aller,
@@ -62,8 +62,9 @@ class CoquilleOnglets extends ConsumerWidget {
   }
 }
 
-class _BarreDuBas extends StatelessWidget {
-  const _BarreDuBas({required this.index, required this.badges, required this.onTap});
+/// Barre d'onglets maison (aussi utilisée pour les captures d'écran).
+class BarreOnglets extends StatelessWidget {
+  const BarreOnglets({super.key, required this.index, required this.badges, required this.onTap});
 
   final int index;
   final Map<int, int> badges;

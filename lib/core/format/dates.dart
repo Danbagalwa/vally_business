@@ -20,6 +20,19 @@ abstract final class FormatDate {
 
   static DateTime jour(DateTime d) => DateTime(d.year, d.month, d.day);
 
+  /// Depuis quand, dit simplement : « aujourd'hui », « hier »,
+  /// « il y a 3 jours », « le 12 nov. » (année ajoutée si elle diffère).
+  static String ilYa(DateTime date, {DateTime? aujourdhui}) {
+    final a = jour(aujourdhui ?? DateTime.now());
+    final d = jour(date);
+    final n = a.difference(d).inDays;
+    if (n <= 0) return 'aujourd’hui';
+    if (n == 1) return 'hier';
+    if (n < 7) return 'il y a $n jours';
+    final texte = DateFormat('d MMM', 'fr').format(d);
+    return d.year == a.year ? 'le $texte' : 'le $texte ${d.year}';
+  }
+
   /// « Aujourd'hui », « Demain », « Hier », « lun. 24 nov. »
   /// (l'année n'est ajoutée que si elle diffère).
   static String relatif(DateTime date, {DateTime? aujourdhui}) {

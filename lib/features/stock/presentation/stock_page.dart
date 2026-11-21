@@ -81,7 +81,7 @@ class _StockPageState extends ConsumerState<StockPage> {
             onRefresh: () => ref.refresh(articlesProvider.future),
             child: CustomScrollView(slivers: [
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: VallySpace.s4),
+                padding: const EdgeInsets.fromLTRB(VallySpace.s4, 8, VallySpace.s4, 0),
                 sliver: SliverToBoxAdapter(
                   child: CarteResumeStock(resume: ResumeStock.depuis(tous), devise: devise),
                 ),

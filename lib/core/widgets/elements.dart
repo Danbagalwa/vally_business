@@ -288,9 +288,12 @@ class AvatarInitiales extends StatelessWidget {
     return CircleAvatar(
       radius: taille / 2,
       backgroundColor: scheme.primary.withValues(alpha: 0.12),
-      child: Text(initiales.isEmpty ? '?' : initiales,
-          style: TextStyle(
-              color: scheme.primary, fontWeight: FontWeight.w700, fontSize: taille * 0.36)),
+      // Sans nom (client de passage) : une silhouette plutôt qu'un « ? ».
+      child: initiales.isEmpty
+          ? Icon(Icons.person_outline, size: taille * 0.5, color: scheme.primary)
+          : Text(initiales,
+              style: TextStyle(
+                  color: scheme.primary, fontWeight: FontWeight.w700, fontSize: taille * 0.36)),
     );
   }
 }

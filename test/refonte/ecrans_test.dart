@@ -110,7 +110,7 @@ void main() {
   setUpAll(() => initializeDateFormatting('fr'));
 
   final ecrans = <String, (Widget, String)>{
-    'Accueil': (const AccueilPage(), 'À livrer aujourd’hui'),
+    'Accueil': (const AccueilPage(), 'À faire'),
     'Ventes': (const VentesPage(), 'Vente'),
     'Commandes': (const CommandesPage(), 'Commande'),
     'Plus': (const PlusPage(), 'Clients et dettes'),

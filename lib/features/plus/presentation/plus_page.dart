@@ -70,7 +70,7 @@ class PlusPage extends ConsumerWidget {
               ),
               const Divider(indent: 62),
               entree(
-                icone: Icons.insights_outlined,
+                icone: Icons.bar_chart_rounded,
                 titre: 'Statistiques',
                 sousTitre: 'Bénéfices, articles les plus vendus',
                 onTap: () => context.push(Routes.statistiques),
@@ -79,7 +79,7 @@ class PlusPage extends ConsumerWidget {
               entree(
                 icone: Icons.currency_exchange,
                 titre: 'Calculateur de devises',
-                sousTitre: 'Dollars ⇄ francs au taux du jour',
+                sousTitre: 'Convertir dollars et francs au taux du jour',
                 onTap: () => context.push(Routes.calculateur),
               ),
               const Divider(indent: 62),

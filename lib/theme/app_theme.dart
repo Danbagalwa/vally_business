@@ -9,6 +9,7 @@
 //   );
 // Couleurs « argent » : Theme.of(context).extension<VallyColors>()!.benefice
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:material_ui/material_ui.dart';
 
 /// Couleurs de la charte, en clair et en sombre.
@@ -150,10 +151,13 @@ class VallyRadius {
 }
 
 class VallyTheme {
-  // Titres : Space Grotesk Bold. Reste : police du système (Roboto sur
-  // Android, San Francisco sur iPhone) — null = police par défaut.
+  // Titres : Space Grotesk Bold. Reste : police du système, nommée
+  // explicitement sur Android (Roboto) ; sur iPhone, null = San Francisco.
   static const _display = 'SpaceGrotesk';
-  static const String? _sans = null;
+  static String? get _sans =>
+      defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS
+          ? null
+          : 'Roboto';
   static const _tabular = [FontFeature.tabularFigures()];
 
   static ThemeData get light => _build(
@@ -250,7 +254,7 @@ class VallyTheme {
     // Méthode de design : boutons 46 px rayon 12, champs remplis sans
     // bordure au repos (liseré rose 1,6 px au focus), AppBar fondue.
     final arrondi = RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.sm));
-    const texteBouton = TextStyle(fontFamily: _sans, fontSize: 13, fontWeight: FontWeight.w700);
+    final texteBouton = TextStyle(fontFamily: _sans, fontSize: 13, fontWeight: FontWeight.w700);
     const tailleBouton = Size(64, 46);
     const paddingBouton = EdgeInsets.symmetric(horizontal: 20);
     final clair = brightness == Brightness.light;
@@ -284,16 +288,15 @@ class VallyTheme {
         actionsIconTheme: IconThemeData(color: ink, size: 21),
       ),
       cardTheme: CardThemeData(
-        // Cartes en blanc pur (sombre : carte de la charte), sans teinte Material 3.
+        // Cartes en blanc pur, sans liseré : en clair, une ombre très douce
+        // (teinte de l'encre) les détache du fond rosé ; en sombre, leur ton
+        // plus clair suffit. Pas de teinte Material 3.
         color: surfaceRaised,
         surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.transparent,
-        elevation: 0,
+        shadowColor: clair ? ink.withValues(alpha: 0.16) : Colors.transparent,
+        elevation: clair ? 1 : 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(VallyRadius.md),
-          side: BorderSide(color: line.withValues(alpha: clair ? 1 : 0.8)),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VallyRadius.md)),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -364,7 +367,7 @@ class VallyTheme {
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
           visualDensity: VisualDensity.compact,
-          textStyle: const TextStyle(fontFamily: _sans, fontSize: 12, fontWeight: FontWeight.w500),
+          textStyle: TextStyle(fontFamily: _sans, fontSize: 12, fontWeight: FontWeight.w500),
           selectedBackgroundColor: roseSoft,
           selectedForegroundColor: roseDeep,
           side: BorderSide(color: line),
