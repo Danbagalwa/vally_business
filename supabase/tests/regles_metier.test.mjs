@@ -354,5 +354,73 @@ await expectOk('vente sans ligne : liste vide (jamais null)', async () => {
 await expectOk('C ne voit pas les articles vendus par Vally', () => as(C,
   `select articles_resume from v_commandes where id = $1`, [venteArt.id]), (r) => r.length === 0);
 
+console.log('\nRéapprovisionnement (racheter un article)');
+const [robe] = await as(A, `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel, date_appro)
+   values ('Robe rachat', 'Robe', 'L', 10, 10000, 15000, '2020-01-10') returning id`);
+await expectOk('la création note le premier achat', () => as(A,
+  `select quantite, prix_achat, prix_moyen_avant from approvisionnements where article_id = $1`, [robe.id]),
+  (r) => r.length === 1 && r[0].quantite === 10 && Number(r[0].prix_achat) === 10000 && r[0].prix_moyen_avant === null);
+const [venteRobe] = await as(A, `insert into commandes default values returning id`);
+await as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+   values ($1, $2, 8, 15000, 0)`, [venteRobe.id, robe.id]);
+await expectOk('rachat de 10 à 12 000 : coût moyen (2 × 10 000 + 10 × 12 000) ÷ 12', () => as(A,
+  `select reapprovisionner($1, 10, 12000, 'CDF', '2020-02-15', 'Grossiste Kin') as cmup`, [robe.id]),
+  (r) => Number(r[0].cmup) === 11666.67);
+await expectOk('v_stock : 20 achetées, 12 restantes, 220 000 investis (exact), 2 achats', () => as(A,
+  `select quantite_achetee, quantite_restante, prix_achat, total_approvisionne, valeur_stock_restant, nb_achats,
+          date_appro::text as date_appro, fournisseur
+     from v_stock where id = $1`, [robe.id]),
+  (r) => r[0].quantite_achetee === 20 && r[0].quantite_restante === 12 && Number(r[0].prix_achat) === 11666.67
+         && Number(r[0].total_approvisionne) === 220000 && Number(r[0].valeur_stock_restant) === 140000.04
+         && r[0].nb_achats === 2 && r[0].date_appro === '2020-02-15' && r[0].fournisseur === 'Grossiste Kin');
+await expectOk('statistiques : en février 2020, seul le rachat compte (120 000)', () => as(A,
+  `select total_approvisionne from dashboard_periode('2020-02-01', '2020-02-29')`),
+  (r) => Number(r[0].total_approvisionne) === 120000);
+await expectOk('une vente après le rachat fige le coût moyen', async () => {
+  const [v] = await as(A, `insert into commandes default values returning id`);
+  return as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+     values ($1, $2, 1, 15000, 0) returning prix_achat_snapshot`, [v.id, robe.id]);
+}, (r) => Number(r[0].prix_achat_snapshot) === 11666.67);
+await expectErr('article racheté : la quantité ne se corrige plus à la main', () => as(A,
+  `update articles set quantite_achetee = 25 where id = $1`, [robe.id]), 'article_rachete');
+await expectOk('… mais le prix de vente habituel, si', () => as(A,
+  `update articles set prix_vente_habituel = 16000 where id = $1 returning prix_vente_habituel`, [robe.id]),
+  (r) => Number(r[0].prix_vente_habituel) === 16000);
+await expectOk('annuler le dernier rachat : quantité, coût moyen et investi reviennent', async () => {
+  await as(A, `select annuler_dernier_rachat($1)`, [robe.id]);
+  return as(A, `select quantite_achetee, prix_achat, total_approvisionne, nb_achats from v_stock where id = $1`, [robe.id]);
+}, (r) => r[0].quantite_achetee === 10 && Number(r[0].prix_achat) === 10000
+         && Number(r[0].total_approvisionne) === 100000 && r[0].nb_achats === 1);
+await expectErr('le premier achat ne s’annule pas', () => as(A, `select annuler_dernier_rachat($1)`, [robe.id]), 'aucun_rachat');
+await expectOk('rachat en USD : 5 USD × 2 800 = 14 000 CDF, saisie gardée', async () => {
+  await as(A, `select reapprovisionner($1, 5, 5, 'USD')`, [robe.id]);
+  return as(A, `select prix_achat, devise_saisie, montant_saisi, taux_change from approvisionnements
+     where article_id = $1 order by created_at desc limit 1`, [robe.id]);
+}, (r) => Number(r[0].prix_achat) === 14000 && r[0].devise_saisie === 'USD'
+         && Number(r[0].montant_saisi) === 5 && Number(r[0].taux_change) === 2800);
+await expectErr('annuler un rachat dont les pièces sont vendues', async () => {
+  const [v] = await as(A, `insert into commandes default values returning id`);
+  await as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+     values ($1, $2, 6, 15000, 0)`, [v.id, robe.id]);
+  return as(A, `select annuler_dernier_rachat($1)`, [robe.id]);
+}, 'quantite_sous_vendu');
+await expectErr('rachat de 0 pièce refusé', () => as(A, `select reapprovisionner($1, 0, 1000, 'CDF')`, [robe.id]), 'quantite_invalide');
+await expectErr('prix négatif refusé', () => as(A, `select reapprovisionner($1, 1, -5, 'CDF')`, [robe.id]), 'prix_invalide');
+await expectOk('article jamais racheté : le corriger corrige son unique achat', async () => {
+  const [ch] = await as(A, `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel)
+     values ('Chemise correction', 'Chemise', 'M', 3, 5000, 9000) returning id`);
+  await as(A, `update articles set quantite_achetee = 4, prix_achat = 6000 where id = $1`, [ch.id]);
+  return [
+    ...(await as(A, `select quantite, prix_achat from approvisionnements where article_id = $1`, [ch.id])),
+    ...(await as(A, `select total_approvisionne from v_stock where id = $1`, [ch.id])),
+  ];
+}, (r) => r.length === 2 && r[0].quantite === 4 && Number(r[0].prix_achat) === 6000 && Number(r[1].total_approvisionne) === 24000);
+await expectErr('C ne peut pas racheter un article de Vally', () => as(C,
+  `select reapprovisionner($1, 1, 1000, 'CDF')`, [robe.id]), 'article_introuvable');
+await expectOk('C ne voit pas les achats de Vally', () => as(C, `select id from approvisionnements`), (r) => r.length === 0);
+await expectErr('l’historique ne s’écrit pas à la main', () => as(A,
+  `insert into approvisionnements (article_id, quantite, prix_achat) values ($1, 1, 1)`, [robe.id]), 'permission');
+await expectErr('… ni ne se modifie', () => as(A, `update approvisionnements set quantite = 99`), 'permission');
+
 console.log(`\n${ok} réussis, ${ko} échoués`);
 process.exit(ko ? 1 : 0);

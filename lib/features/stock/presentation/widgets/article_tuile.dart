@@ -14,11 +14,15 @@ class ArticleTuile extends StatelessWidget {
     required this.article,
     required this.devise,
     this.onTap,
+    this.onRacheter,
   });
 
   final Article article;
   final Devise devise;
   final VoidCallback? onTap;
+
+  /// Raccourci « Racheter » (articles épuisés ou presque).
+  final VoidCallback? onRacheter;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +57,22 @@ class ArticleTuile extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
               ),
               const SizedBox(height: 4),
-              BadgeStock(article: a),
+              if (onRacheter == null)
+                BadgeStock(article: a)
+              else
+                Row(children: [
+                  Expanded(child: Align(alignment: Alignment.centerLeft, child: BadgeStock(article: a))),
+                  TextButton.icon(
+                    onPressed: onRacheter,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Racheter'),
+                  ),
+                ]),
             ]),
           ),
         ]),

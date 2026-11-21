@@ -25,6 +25,7 @@ class Article {
     required this.valeurStockRestant,
     this.derniereVente,
     this.pourEnfant = false,
+    this.nbAchats = 1,
   });
 
   final String id;
@@ -51,6 +52,12 @@ class Article {
 
   /// Vêtement pour enfant (sinon adulte, par défaut).
   final bool pourEnfant;
+
+  /// Nombre d'achats : 1 = jamais racheté. Au-delà, quantité et prix
+  /// d'achat ne se corrigent plus à la main (voir [Achat]).
+  final int nbAchats;
+
+  bool get dejaRachete => nbAchats > 1;
 
   bool get epuise => quantiteRestante <= 0;
   bool get stockFaible => !epuise && quantiteRestante <= seuilStockFaible;
@@ -82,7 +89,78 @@ class Article {
             ? null
             : FormatDate.lire(json['derniere_vente'] as String),
         pourEnfant: json['pour_enfant'] as bool? ?? false,
+        // Absente avant la mise à jour SQL « réapprovisionnement ».
+        nbAchats: (json['nb_achats'] as num?)?.toInt() ?? 1,
       );
+}
+
+/// Un achat d'un article : le premier, ou un rachat (table approvisionnements).
+class Achat {
+  const Achat({
+    required this.id,
+    required this.date,
+    required this.quantite,
+    required this.prixAchat,
+    this.fournisseur,
+    required this.estRachat,
+    this.deviseSaisie,
+    this.montantSaisi,
+    this.tauxChange,
+    required this.creeLe,
+  });
+
+  final String id;
+  final DateTime date;
+  final int quantite;
+
+  /// Prix d'une pièce, tous frais compris, en devise de référence.
+  final double prixAchat;
+  final String? fournisseur;
+
+  /// Faux pour le premier achat (création de l'article).
+  final bool estRachat;
+  final Devise? deviseSaisie;
+  final double? montantSaisi;
+  final double? tauxChange;
+  final DateTime creeLe;
+
+  double get total => quantite * prixAchat;
+
+  factory Achat.fromJson(Map<String, dynamic> j) => Achat(
+        id: j['id'] as String,
+        date: FormatDate.lire(j['date_appro'] as String),
+        quantite: (j['quantite'] as num).toInt(),
+        prixAchat: (j['prix_achat'] as num).toDouble(),
+        fournisseur: j['fournisseur'] as String?,
+        estRachat: j['prix_moyen_avant'] != null,
+        deviseSaisie: j['devise_saisie'] == null ? null : Devise.depuisCode(j['devise_saisie'] as String),
+        montantSaisi: (j['montant_saisi'] as num?)?.toDouble(),
+        tauxChange: (j['taux_change'] as num?)?.toDouble(),
+        creeLe: DateTime.parse(j['created_at'] as String).toLocal(),
+      );
+}
+
+/// Coût moyen d'une pièce après un rachat, comme la base le calcule :
+/// (pièces en boutique × coût actuel + pièces rachetées × nouveau prix)
+/// ÷ total des pièces en boutique, arrondi au centime.
+double coutMoyenApresRachat({
+  required int restant,
+  required double coutActuel,
+  required int quantite,
+  required double prix,
+}) {
+  final r = restant < 0 ? 0 : restant;
+  final total = r + quantite;
+  if (total <= 0) return coutActuel;
+  return ((r * coutActuel + quantite * prix) / total * 100).round() / 100;
+}
+
+/// Où en est l'article, en une phrase : « Il en reste 2 sur 10. »
+String phraseResteArticle(Article a) {
+  if (!a.epuise) return 'Il en reste ${a.quantiteRestante} sur ${a.quantiteAchetee}.';
+  return a.quantiteAchetee == 1
+      ? 'Épuisé : la seule pièce est vendue ou réservée.'
+      : 'Épuisé : les ${a.quantiteAchetee} pièces sont vendues ou réservées.';
 }
 
 /// Données saisies dans le formulaire d'article (montants déjà convertis

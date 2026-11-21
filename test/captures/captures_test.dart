@@ -20,6 +20,7 @@ import 'package:vally_business/core/router/coquille_onglets.dart';
 import 'package:vally_business/features/accueil/presentation/accueil_page.dart';
 import 'package:vally_business/features/auth/data/auth_repository.dart';
 import 'package:vally_business/features/plus/presentation/plus_page.dart';
+import 'package:vally_business/features/stock/presentation/article_form_page.dart';
 import 'package:vally_business/features/stock/presentation/stock_page.dart';
 import 'package:vally_business/features/ventes/presentation/commandes_page.dart';
 import 'package:vally_business/features/ventes/presentation/ventes_page.dart';
@@ -140,6 +141,28 @@ final _articles = <Article>[
       nom: 'Pyjama ourson', categorie: 'Ensemble', taille: '2 ans', couleur: null, quantiteAchetee: 3)
     ..['pour_enfant'] = true),
   article(nom: 'Chemise lin blanche', categorie: 'Chemise', couleur: 'Blanc', quantiteAchetee: 6, quantiteVendue: 2),
+  // Rachetée une fois : 10 à 10 000 (8 vendues), puis 6 à 12 000 → coût
+  // moyen (2 × 10 000 + 6 × 12 000) ÷ 8 = 11 500 ; 14 vendues en tout.
+  Article.fromJson(ligneVStock(
+      id: 'robe-rachetee', nom: 'Robe brodée cérémonie', couleur: 'Bordeaux',
+      quantiteAchetee: 16, quantiteVendue: 14, prixAchat: 11500)
+    ..['nb_achats'] = 2
+    ..['total_approvisionne'] = 172000
+    ..['prix_vente_habituel'] = 18000
+    ..['fournisseur'] = 'Grossiste Kin'),
+];
+
+final _achatsRobe = <Achat>[
+  Achat.fromJson({
+    'id': 'r2', 'date_appro': _jour(-3), 'quantite': 6, 'prix_achat': 12000, 'fournisseur': 'Grossiste Kin',
+    'prix_moyen_avant': 10000, 'devise_saisie': null, 'montant_saisi': null, 'taux_change': null,
+    'created_at': '${_jour(-3)}T10:00:00Z',
+  }),
+  Achat.fromJson({
+    'id': 'r1', 'date_appro': _jour(-19), 'quantite': 10, 'prix_achat': 10000, 'fournisseur': 'Marché central',
+    'prix_moyen_avant': null, 'devise_saisie': null, 'montant_saisi': null, 'taux_change': null,
+    'created_at': '${_jour(-19)}T10:00:00Z',
+  }),
 ];
 
 // ─── Mes dépenses ───
@@ -185,7 +208,9 @@ const _indicateurs = IndicateursActuels(
   beneficeVerse: 150000, beneficeDisponible: 190000, resteDu: 67000,
 );
 
-Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme, {double hauteur = 806}) async {
+/// [onglets] : faux pour un écran plein (fiche, formulaire), sans barre du bas.
+Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme,
+    {double hauteur = 806, bool onglets = true}) async {
   tester.view.physicalSize = Size(720, hauteur * 2);
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
@@ -202,6 +227,7 @@ Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme, {doubl
         mouvementsProvider.overrideWith((ref) async => _mouvements),
         fluxMensuelProvider.overrideWith((ref) async => _flux()),
         indicateursActuelsProvider.overrideWith((ref) async => _indicateurs),
+        achatsArticleProvider.overrideWith((ref, id) async => id == 'robe-rachetee' ? _achatsRobe : const []),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -210,12 +236,14 @@ Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme, {doubl
         supportedLocales: const [Locale('fr', 'FR')],
         locale: const Locale('fr', 'FR'),
         home: Consumer(
-          builder: (context, ref, _) => ref.watch(boutiqueProvider).hasValue
-              ? Scaffold(
-                  body: page,
-                  bottomNavigationBar: BarreOnglets(index: 0, badges: const {2: 2}, onTap: (_) {}),
-                )
-              : const SizedBox.shrink(),
+          builder: (context, ref, _) => !ref.watch(boutiqueProvider).hasValue
+              ? const SizedBox.shrink()
+              : onglets
+                  ? Scaffold(
+                      body: page,
+                      bottomNavigationBar: BarreOnglets(index: 0, badges: const {2: 2}, onTap: (_) {}),
+                    )
+                  : page,
         ),
       ),
     ),
@@ -264,6 +292,28 @@ void main() {
     await tester.tap(find.byTooltip('Noter une dépense ou une entrée'));
     await tester.pumpAndSettle();
     await _capturer(tester, 'depenses_saisie_clair');
+  });
+
+  // Articles : nouvel article, fiche d'un article racheté, feuille « Racheter ».
+  testWidgets('capture article_nouveau (clair)', skip: ignorer != null, (tester) async {
+    await _afficher(tester, const ArticleFormPage(), VallyTheme.light, hauteur: 1900, onglets: false);
+    await _capturer(tester, 'article_nouveau_clair');
+  });
+  for (final (variante, theme) in [('clair', VallyTheme.light), ('sombre', VallyTheme.dark)]) {
+    testWidgets('capture article_fiche ($variante)', skip: ignorer != null, (tester) async {
+      await _afficher(tester, const ArticleFormPage(articleId: 'robe-rachetee'), theme,
+          hauteur: 1900, onglets: false);
+      await _capturer(tester, 'article_fiche_$variante');
+    });
+  }
+  testWidgets('capture article_rachat (clair)', skip: ignorer != null, (tester) async {
+    await _afficher(tester, const ArticleFormPage(articleId: 'robe-rachetee'), VallyTheme.light,
+        onglets: false);
+    await tester.tap(find.text('Racheter'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Combien de pièces as-tu rachetées ?'), '10');
+    await tester.pumpAndSettle();
+    await _capturer(tester, 'article_rachat_clair');
   });
 
   // Mes dépenses : page entière (longue), en clair et en sombre.

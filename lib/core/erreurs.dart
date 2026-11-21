@@ -24,6 +24,9 @@ String messageErreur(Object erreur) {
     // Erreurs levées par nos règles SQL : le message est déjà rédigé.
     if (erreur.code == 'P0001') return erreur.message;
     return switch (erreur.code) {
+      // Fonction ou table pas encore créée : la base n'a pas reçu sa mise à jour.
+      'PGRST202' || 'PGRST205' || '42883' || '42P01' =>
+        'Cette action demande une mise à jour de la base de données (dossier supabase/mises_a_jour).',
       '23503' => 'Impossible : cet élément est utilisé ailleurs.',
       '23505' => 'Cet élément existe déjà.',
       '23514' || '23502' => 'Une valeur saisie n’est pas valide.',

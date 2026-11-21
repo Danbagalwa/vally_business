@@ -14,6 +14,8 @@ import 'package:vally_business/features/clients/presentation/client_detail_page.
 import 'package:vally_business/features/clients/presentation/clients_page.dart';
 import 'package:vally_business/features/plus/presentation/plus_page.dart';
 import 'package:vally_business/features/stock/data/stock_repository.dart';
+import 'package:vally_business/features/stock/domain/article.dart';
+import 'package:vally_business/features/stock/presentation/article_form_page.dart';
 import 'package:vally_business/features/stock/presentation/stock_page.dart';
 import 'package:vally_business/features/ventes/data/ventes_repository.dart';
 import 'package:vally_business/features/ventes/domain/commande.dart';
@@ -72,6 +74,21 @@ Future<void> _afficher(WidgetTester tester, Widget page, ThemeData theme) async 
       boutiqueProvider.overrideWith((ref) async => boutiqueTest),
       articlesProvider.overrideWith((ref) async => [
             article(nom: 'Robe pagne fleurie', quantiteAchetee: 5, quantiteVendue: 4),
+            // Article déjà racheté (deux achats) : sa fiche montre l'historique.
+            Article.fromJson(ligneVStock(
+                id: 'robe-rachetee', nom: 'Robe de soirée satin brodée main',
+                quantiteAchetee: 16, quantiteVendue: 14, prixAchat: 11666.67)
+              ..['nb_achats'] = 2
+              ..['total_approvisionne'] = 172000),
+          ]),
+      achatsArticleProvider.overrideWith((ref, id) async => [
+            Achat.fromJson({'id': 'x2', 'date_appro': '2026-11-19', 'quantite': 6, 'prix_achat': 12000,
+              'fournisseur': 'Grossiste du grand marché de Kinshasa', 'prix_moyen_avant': 10000,
+              'devise_saisie': 'USD', 'montant_saisi': 4.29, 'taux_change': 2800,
+              'created_at': '2026-11-19T10:00:00Z'}),
+            Achat.fromJson({'id': 'x1', 'date_appro': '2026-11-02', 'quantite': 10, 'prix_achat': 10000,
+              'fournisseur': null, 'prix_moyen_avant': null, 'devise_saisie': null,
+              'montant_saisi': null, 'taux_change': null, 'created_at': '2026-11-02T10:00:00Z'}),
           ]),
       commandesProvider.overrideWith((ref) async => _commandes),
       clientsResumeProvider.overrideWith((ref) async => _clients),
@@ -115,6 +132,8 @@ void main() {
     'Ventes': (const VentesPage(), 'Vente'),
     'Commandes': (const CommandesPage(), 'Commande'),
     'Stock': (const StockPage(), 'en boutique'),
+    'Nouvel article': (const ArticleFormPage(), 'Pour qui'),
+    'Fiche article': (const ArticleFormPage(articleId: 'robe-rachetee'), 'Racheter'),
     'Plus': (const PlusPage(), 'Clients et dettes'),
     'Clients': (const ClientsPage(), 'On te doit '),
     'Fiche client': (const ClientDetailPage(clientId: 'cl-Maman Rose Mbuyi Kalonji'), 'À encaisser'),

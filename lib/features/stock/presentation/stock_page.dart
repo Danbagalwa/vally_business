@@ -13,6 +13,7 @@ import '../../boutique/data/boutique_repository.dart';
 import '../data/stock_repository.dart';
 import '../domain/article.dart';
 import 'widgets/article_tuile.dart';
+import 'widgets/feuille_rachat.dart';
 
 /// Onglet Stock : l'inventaire. Une phrase pour le résumé, les articles
 /// épuisés ou presque en premier, puis le reste de la boutique.
@@ -130,7 +131,11 @@ class _StockPageState extends ConsumerState<StockPage> {
                         titre: 'Épuisés ou presque',
                         detail: Text('${aSurveiller.length}'),
                       ),
-                      _Inventaire(articles: aSurveiller, devise: devise),
+                      _Inventaire(
+                        articles: aSurveiller,
+                        devise: devise,
+                        onRacheter: (a) => racheterArticle(context, ref, a),
+                      ),
                     ],
                     if (enBoutique.isNotEmpty) ...[
                       // Un seul groupe : pas besoin de titre.
@@ -155,10 +160,13 @@ class _StockPageState extends ConsumerState<StockPage> {
 
 /// Une carte-registre d'articles, une ligne par article.
 class _Inventaire extends StatelessWidget {
-  const _Inventaire({required this.articles, required this.devise});
+  const _Inventaire({required this.articles, required this.devise, this.onRacheter});
 
   final List<Article> articles;
   final Devise devise;
+
+  /// Raccourci « Racheter » sur chaque ligne (articles épuisés ou presque).
+  final void Function(Article)? onRacheter;
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +180,7 @@ class _Inventaire extends StatelessWidget {
             article: a,
             devise: devise,
             onTap: () => context.push(Routes.article(a.id)),
+            onRacheter: onRacheter == null ? null : () => onRacheter!(a),
           ),
         ],
       ]),
