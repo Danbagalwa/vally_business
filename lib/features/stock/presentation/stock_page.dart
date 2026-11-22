@@ -13,6 +13,7 @@ import '../../boutique/data/boutique_repository.dart';
 import '../data/stock_repository.dart';
 import '../domain/article.dart';
 import 'widgets/article_tuile.dart';
+import 'widgets/choix_ajout.dart';
 import 'widgets/feuille_rachat.dart';
 
 /// Onglet Stock : l'inventaire. Une phrase pour le résumé, les articles
@@ -29,6 +30,19 @@ class _StockPageState extends ConsumerState<StockPage> {
   bool _rechercheOuverte = false;
   String? _categorie;
   Public _public = Public.tous;
+
+  /// « + » : deux chemins séparés, nouvel article ou réapprovisionnement.
+  /// Sans aucun article, il n'y a rien à racheter : directement le nouvel article.
+  Future<void> _ajouter() async {
+    final aDesArticles = (ref.read(articlesProvider).value ?? const []).isNotEmpty;
+    if (!aDesArticles) {
+      context.push(Routes.nouvelArticle);
+      return;
+    }
+    final choix = await choisirAjout(context);
+    if (!mounted || choix == null) return;
+    context.push(choix == ChoixAjout.nouvelArticle ? Routes.nouvelArticle : Routes.reapprovisionner);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +71,7 @@ class _StockPageState extends ConsumerState<StockPage> {
               _recherche = '';
             }),
           ),
-          BoutonAjout(libelle: 'Article', tooltip: 'Ajouter un article', onPressed: () => context.push(Routes.nouvelArticle)),
+          BoutonAjout(libelle: 'Ajouter', tooltip: 'Ajouter au stock', onPressed: _ajouter),
         ],
       ),
       body: articles.when(

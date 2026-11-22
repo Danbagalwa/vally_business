@@ -9,6 +9,7 @@ import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/format/texte.dart';
 import '../../../core/images.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/champ_montant.dart';
 import '../../../core/widgets/elements.dart';
@@ -30,13 +31,16 @@ const _categoriesCourantes = [
 /// Nouvel article (articleId null), ou fiche d'un article : ce qu'il en
 /// reste, le racheter, ses achats, et ses informations à corriger.
 class ArticleFormPage extends ConsumerWidget {
-  const ArticleFormPage({super.key, this.articleId});
+  const ArticleFormPage({super.key, this.articleId, this.nomPropose});
 
   final String? articleId;
 
+  /// Nouvel article : nom déjà tapé (depuis la recherche de « Réapprovisionner »).
+  final String? nomPropose;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (articleId == null) return const _Formulaire(article: null);
+    if (articleId == null) return _Formulaire(article: null, nomPropose: nomPropose);
     return ref.watch(articlesProvider).when(
           skipLoadingOnRefresh: true,
           loading: () => Scaffold(
@@ -64,9 +68,10 @@ class ArticleFormPage extends ConsumerWidget {
 enum _ActionPhoto { appareil, galerie, retirer }
 
 class _Formulaire extends ConsumerStatefulWidget {
-  const _Formulaire({required this.article});
+  const _Formulaire({required this.article, this.nomPropose});
 
   final Article? article;
+  final String? nomPropose;
 
   @override
   ConsumerState<_Formulaire> createState() => _FormulaireState();
@@ -97,7 +102,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
     super.initState();
     _boutique = ref.read(boutiqueActiveProvider);
     final a = _article;
-    _nom = TextEditingController(text: a?.nom);
+    _nom = TextEditingController(text: a?.nom ?? widget.nomPropose);
     _categorie = TextEditingController(text: a?.categorie);
     _taille = TextEditingController(text: a?.taille);
     _couleur = TextEditingController(text: a?.couleur);
@@ -284,6 +289,18 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
     }
   }
 
+  /// L'article existe déjà : on le rachète au lieu d'en créer un deuxième.
+  /// Un seul article de ce nom : la feuille « Racheter » directement, puis
+  /// retour au stock. Plusieurs (tailles) : la page « Réapprovisionner ».
+  Future<void> _reapprovisionnerPlutot(List<Article> memes) async {
+    if (memes.length == 1) {
+      final rachat = await racheterArticle(context, ref, memes.single);
+      if (rachat != null && mounted) context.pop();
+      return;
+    }
+    context.pushReplacement('${Routes.reapprovisionner}?q=${Uri.encodeQueryComponent(_nom.text.trim())}');
+  }
+
   /// Erreur de saisie dans le dernier rachat : on le retire, puis on le refait.
   Future<void> _retirerRachat(Achat achat) async {
     final q = achat.quantite;
@@ -315,6 +332,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
     final article = _article;
     final devise = _boutique.devise;
     final dejaVendu = article?.quantiteVendue ?? 0;
+    final existants = ref.watch(articlesProvider).value ?? const <Article>[];
     const marge = EdgeInsets.fromLTRB(2, 24, 2, 10);
 
     return Scaffold(
@@ -378,6 +396,16 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
               decoration: const InputDecoration(labelText: 'Nom', hintText: 'Ex. : Robe pagne fleurie'),
               validator: _obligatoire('Donne un nom à l’article.'),
             ),
+            // Nouvel article dont le nom existe déjà : sans doute un rachat.
+            if (!_modification)
+              ListenableBuilder(
+                listenable: _nom,
+                builder: (context, _) => _DejaEnStock(
+                  nom: _nom.text,
+                  articles: existants,
+                  onReapprovisionner: _reapprovisionnerPlutot,
+                ),
+              ),
             const SizedBox(height: VallySpace.s4),
             _ChampAvecSuggestions(
               controller: _categorie,
@@ -536,6 +564,62 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
 
   FormFieldValidator<String> _obligatoire(String message) =>
       (v) => (v == null || v.trim().isEmpty) ? message : null;
+}
+
+/// « Tu as déjà cet article » : le nom tapé existe (sans tenir compte des
+/// accents ni des majuscules). La taille est rappelée pour juger si c'est
+/// le même ou un autre (même robe, autre taille = nouvel article).
+class _DejaEnStock extends StatelessWidget {
+  const _DejaEnStock({required this.nom, required this.articles, required this.onReapprovisionner});
+
+  final String nom;
+  final List<Article> articles;
+  final void Function(List<Article> memes) onReapprovisionner;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = normaliserRecherche(nom.trim());
+    if (n.length < 3) return const SizedBox.shrink();
+    final memes = articles.where((a) => normaliserRecherche(a.nom.trim()) == n).toList();
+    if (memes.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tailles = memes.map((a) => a.taille).toSet().toList();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 6, 4),
+        decoration: BoxDecoration(
+          color: scheme.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(VallyRadius.sm),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(Icons.info_outline, size: 18, color: scheme.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Tu as déjà « ${memes.first.nom} » '
+                '(${tailles.length > 1 ? 'tailles' : 'taille'} ${tailles.join(', ')}). '
+                'Si c’est le même article, réapprovisionne-le plutôt que d’en créer un deuxième.',
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.35),
+              ),
+            ),
+          ]),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => onReapprovisionner(memes),
+              child: const Text('Réapprovisionner'),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 /// Champ texte avec des pastilles de suggestions en dessous.

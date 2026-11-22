@@ -143,7 +143,8 @@ class AccueilPage extends ConsumerWidget {
                 const SizedBox(height: 28),
                 _NoteStock(
                   articles: presqueEpuises,
-                  onTap: () => context.go(Routes.stock),
+                  // Presque plus rien : le plus utile est de racheter.
+                  onTap: () => context.push(Routes.reapprovisionner),
                 ),
               ],
             ],

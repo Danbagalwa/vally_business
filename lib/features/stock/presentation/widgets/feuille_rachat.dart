@@ -33,8 +33,9 @@ class Rachat {
 }
 
 /// Racheter un article : la feuille, puis l'enregistrement, puis un mot
-/// pour dire que c'est fait. Sert depuis le stock et depuis la fiche.
-Future<void> racheterArticle(BuildContext context, WidgetRef ref, Article article) async {
+/// pour dire que c'est fait. Sert depuis le stock, la fiche et la page
+/// « Réapprovisionner ». Retourne le rachat enregistré (null sinon).
+Future<Rachat?> racheterArticle(BuildContext context, WidgetRef ref, Article article) async {
   final boutique = ref.read(boutiqueActiveProvider);
   // Prix proposé : celui du dernier achat (le coût moyen n'est pas un prix
   // qu'on a payé). Jamais racheté : c'est le prix d'achat de l'article.
@@ -52,9 +53,9 @@ Future<void> racheterArticle(BuildContext context, WidgetRef ref, Article articl
       abonnement.close();
     }
   }
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
   final rachat = await demanderRachat(context, article: article, boutique: boutique, prixPropose: prixPropose);
-  if (rachat == null || !context.mounted) return;
+  if (rachat == null || !context.mounted) return null;
   try {
     await ref.read(stockRepositoryProvider).reapprovisionner(
           articleId: article.id,
@@ -66,8 +67,10 @@ Future<void> racheterArticle(BuildContext context, WidgetRef ref, Article articl
         );
     ref.invalidate(articlesProvider);
     if (context.mounted) afficherSucces(context, '${pieces(rachat.quantite)} de plus en stock.');
+    return rachat;
   } catch (e) {
     if (context.mounted) afficherErreur(context, e);
+    return null;
   }
 }
 

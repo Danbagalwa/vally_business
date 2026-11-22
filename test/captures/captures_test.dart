@@ -21,6 +21,7 @@ import 'package:vally_business/features/accueil/presentation/accueil_page.dart';
 import 'package:vally_business/features/auth/data/auth_repository.dart';
 import 'package:vally_business/features/plus/presentation/plus_page.dart';
 import 'package:vally_business/features/stock/presentation/article_form_page.dart';
+import 'package:vally_business/features/stock/presentation/reapprovisionnement_page.dart';
 import 'package:vally_business/features/stock/presentation/stock_page.dart';
 import 'package:vally_business/features/ventes/presentation/commandes_page.dart';
 import 'package:vally_business/features/ventes/presentation/ventes_page.dart';
@@ -314,6 +315,25 @@ void main() {
     await tester.enterText(find.widgetWithText(TextFormField, 'Combien de pièces as-tu rachetées ?'), '10');
     await tester.pumpAndSettle();
     await _capturer(tester, 'article_rachat_clair');
+  });
+
+  // Ajouter au stock : le choix du « + », la page « Réapprovisionner », l'alerte doublon.
+  testWidgets('capture stock_choix (clair)', skip: ignorer != null, (tester) async {
+    await _afficher(tester, const StockPage(), VallyTheme.light);
+    await tester.tap(find.byTooltip('Ajouter au stock'));
+    await tester.pumpAndSettle();
+    await _capturer(tester, 'stock_choix_clair');
+  });
+  for (final (variante, theme) in [('clair', VallyTheme.light), ('sombre', VallyTheme.dark)]) {
+    testWidgets('capture reappro ($variante)', skip: ignorer != null, (tester) async {
+      await _afficher(tester, const ReapprovisionnementPage(), theme, hauteur: 1500, onglets: false);
+      await _capturer(tester, 'reappro_$variante');
+    });
+  }
+  testWidgets('capture article_doublon (clair)', skip: ignorer != null, (tester) async {
+    await _afficher(tester, const ArticleFormPage(nomPropose: 'Robe pagne fleurie'), VallyTheme.light,
+        onglets: false);
+    await _capturer(tester, 'article_doublon_clair');
   });
 
   // Mes dépenses : page entière (longue), en clair et en sombre.

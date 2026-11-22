@@ -16,6 +16,7 @@ import 'package:vally_business/features/plus/presentation/plus_page.dart';
 import 'package:vally_business/features/stock/data/stock_repository.dart';
 import 'package:vally_business/features/stock/domain/article.dart';
 import 'package:vally_business/features/stock/presentation/article_form_page.dart';
+import 'package:vally_business/features/stock/presentation/reapprovisionnement_page.dart';
 import 'package:vally_business/features/stock/presentation/stock_page.dart';
 import 'package:vally_business/features/ventes/data/ventes_repository.dart';
 import 'package:vally_business/features/ventes/domain/commande.dart';
@@ -134,6 +135,7 @@ void main() {
     'Stock': (const StockPage(), 'en boutique'),
     'Nouvel article': (const ArticleFormPage(), 'Pour qui'),
     'Fiche article': (const ArticleFormPage(articleId: 'robe-rachetee'), 'Racheter'),
+    'Réapprovisionner': (const ReapprovisionnementPage(), 'Touche l’article'),
     'Plus': (const PlusPage(), 'Clients et dettes'),
     'Clients': (const ClientsPage(), 'On te doit '),
     'Fiche client': (const ClientDetailPage(clientId: 'cl-Maman Rose Mbuyi Kalonji'), 'À encaisser'),

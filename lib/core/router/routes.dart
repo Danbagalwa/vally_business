@@ -15,8 +15,9 @@ abstract final class Routes {
   static const nouvelleCommande = '/commandes/nouvelle';
   static String commande(String id) => '/commandes/$id';
 
-  // Stock
+  // Stock : ajouter un article et réapprovisionner sont deux chemins à part.
   static const nouvelArticle = '/stock/nouveau';
+  static const reapprovisionner = '/stock/reapprovisionner';
   static String article(String id) => '/stock/$id';
 
   // Écrans ouverts depuis « Plus » ou l'accueil

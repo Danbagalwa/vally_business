@@ -16,6 +16,7 @@ import '../../features/clients/presentation/clients_page.dart';
 import '../../features/depenses/presentation/depenses_page.dart';
 import '../../features/plus/presentation/plus_page.dart';
 import '../../features/stock/presentation/article_form_page.dart';
+import '../../features/stock/presentation/reapprovisionnement_page.dart';
 import '../../features/stock/presentation/stock_page.dart';
 import '../../features/tableau_de_bord/presentation/tableau_de_bord_page.dart';
 import '../../features/ventes/domain/commande.dart';
@@ -105,7 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: Routes.stock,
               builder: (_, _) => const StockPage(),
               routes: [
-                _pleinEcran('nouveau', (_) => const ArticleFormPage()),
+                _pleinEcran('nouveau', (s) => ArticleFormPage(nomPropose: s.uri.queryParameters['nom'])),
+                // Avant « :id », sinon « reapprovisionner » serait pris pour un id.
+                _pleinEcran('reapprovisionner',
+                    (s) => ReapprovisionnementPage(recherche: s.uri.queryParameters['q'])),
                 _pleinEcran(':id', (s) => ArticleFormPage(articleId: s.pathParameters['id'])),
               ],
             ),

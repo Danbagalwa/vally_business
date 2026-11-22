@@ -51,7 +51,7 @@ void main() {
   testWidgets('stock vide : invite à ajouter un article', (tester) async {
     await _ouvrirStock(tester, const []);
     expect(find.text('Aucun article pour l’instant'), findsOneWidget);
-    expect(find.byTooltip('Ajouter un article'), findsOneWidget);
+    expect(find.byTooltip('Ajouter au stock'), findsOneWidget);
   });
 
   testWidgets('liste : résumé, alertes, filtres catégorie / enfant, recherche',
