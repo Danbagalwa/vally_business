@@ -1,0 +1,78 @@
+# Publie l'appli web (PWA) sur GitHub Pages à chaque envoi sur main.
+#
+# Avant le premier déploiement, dans le dépôt GitHub :
+#   1. Settings → Secrets and variables → Actions → New repository secret :
+#        SUPABASE_URL       (ex. https://xxxx.supabase.co)
+#        SUPABASE_ANON_KEY  (clé « anon » / publishable du projet)
+#   2. Settings → Pages → Source : « GitHub Actions ».
+#
+# Les clés ne sont jamais dans le code : elles viennent des secrets.
+name: Déployer l'appli web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois ; le plus récent l'emporte.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.0
+          cache: true
+
+      - name: Vérifier les secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Ajoute les secrets SUPABASE_URL et SUPABASE_ANON_KEY (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - run: flutter pub get
+
+      - name: Tests
+        run: flutter test
+
+      - name: Construire (adresse = /nom-du-dépôt/)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build web --release \
+            --base-href "/${{ github.event.repository.name }}/" \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+          # Pas de traitement Jekyll : les fichiers sont servis tels quels.
+          touch build/web/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4

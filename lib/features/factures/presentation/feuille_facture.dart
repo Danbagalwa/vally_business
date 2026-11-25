@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -47,7 +48,9 @@ class _FeuilleFactureState extends State<_FeuilleFacture> {
   _Action? _enCours;
 
   Commande get _c => widget.detail.commande;
-  bool get _whatsAppDirect => numeroWhatsApp(_c.clientTelephone) != null;
+  /// WhatsApp ouvert directement sur la discussion : appli Android seulement.
+  /// Sur le web (iPhone), tout passe par le menu de partage.
+  bool get _whatsAppDirect => !kIsWeb && numeroWhatsApp(_c.clientTelephone) != null;
 
   Future<void> _envoyer(_Action action) async {
     HapticFeedback.lightImpact();
@@ -141,8 +144,10 @@ class _FeuilleFactureState extends State<_FeuilleFacture> {
                 label: const Text('Partager la facture'),
               ),
               const SizedBox(height: 10),
-              const NoteInfo('Ajoute le numéro du client dans sa fiche pour lui envoyer '
-                  'la facture directement sur WhatsApp.'),
+              const NoteInfo(kIsWeb
+                  ? 'Dans le menu qui s’ouvre, choisis WhatsApp puis la discussion du client.'
+                  : 'Ajoute le numéro du client dans sa fiche pour lui envoyer '
+                      'la facture directement sur WhatsApp.'),
             ],
             const SizedBox(height: 4),
             TextButton(

@@ -65,6 +65,12 @@ flutter_launcher_icons:
   ios: true
   remove_alpha_ios: true                        # l'App Store refuse la transparence
   background_color_ios: "#FCE4EC"
+  # Web (PWA sur iPhone) : icônes du dossier web/icons et favicon.
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#FFF7FA"
+    theme_color: "#C2255C"
 
 # ── Écran de démarrage ───────────────────────────────────────
 #  Commande : dart run flutter_native_splash:create

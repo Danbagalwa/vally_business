@@ -1,12 +1,14 @@
 {
-    "name": "vally_business",
-    "short_name": "vally_business",
+    "name": "Vally Business",
+    "short_name": "Vally",
+    "description": "Ventes, commandes, stock et clients de la boutique.",
+    "lang": "fr",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
     "orientation": "portrait-primary",
+    "background_color": "#FFF7FA",
+    "theme_color": "#C2255C",
     "prefer_related_applications": false,
     "icons": [
         {

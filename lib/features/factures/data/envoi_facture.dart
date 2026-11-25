@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -42,8 +43,22 @@ class EnvoiFacture {
     bool versWhatsApp = true,
   }) async {
     final c = detail.commande;
-    final fichier = await preparer(detail, boutique);
     final message = messageRemerciement(c, boutique: boutique.nom, devise: boutique.devise);
+
+    // Web (appli installée sur iPhone) : pas de dossier de fichiers. Le PDF
+    // part en mémoire dans le menu de partage du téléphone (WhatsApp y figure).
+    if (kIsWeb) {
+      final octets = await genererFacturePdf(detail: detail, boutique: boutique);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile.fromData(octets, mimeType: 'application/pdf', name: nomFichierFacture(c))],
+        fileNameOverrides: [nomFichierFacture(c)],
+        text: message,
+        subject: 'Facture ${c.numero ?? ''} · ${boutique.nom}',
+      ));
+      return ResultatEnvoi.partage;
+    }
+
+    final fichier = await preparer(detail, boutique);
 
     if (versWhatsApp && Platform.isAndroid) {
       try {
