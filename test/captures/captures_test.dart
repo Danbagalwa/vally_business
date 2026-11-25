@@ -268,7 +268,8 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await initializeDateFormatting('fr');
-    await _chargerPolices();
+    // Polices du SDK seulement quand on produit les captures (absentes en CI).
+    if (_sortie != null) await _chargerPolices();
   });
 
   final ignorer = _sortie == null ? 'Définis VALLY_CAPTURES pour produire les captures.' : null;
