@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/montant.dart';
+import '../../../core/rayon.dart';
 import '../../../core/format/texte.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/carnet.dart';
@@ -57,10 +58,10 @@ class _ReapprovisionnementPageState extends ConsumerState<ReapprovisionnementPag
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final devise = ref.watch(boutiqueActiveProvider).devise;
-    final articles = ref.watch(articlesProvider);
+    final articles = ref.watch(articlesRayonProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Réapprovisionner')),
+      appBar: AppBar(title: const Text('Réapprovisionner'), bottom: const BarreRayon()),
       body: articles.when(
         skipLoadingOnRefresh: true,
         loading: () => const ListeSquelette(avecResume: false, avecPhrase: true, avecFiltres: false),

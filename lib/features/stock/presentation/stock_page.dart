@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/montant.dart';
+import '../../../core/rayon.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/elements.dart';
@@ -34,7 +35,7 @@ class _StockPageState extends ConsumerState<StockPage> {
   /// « + » : deux chemins séparés, nouvel article ou réapprovisionnement.
   /// Sans aucun article, il n'y a rien à racheter : directement le nouvel article.
   Future<void> _ajouter() async {
-    final aDesArticles = (ref.read(articlesProvider).value ?? const []).isNotEmpty;
+    final aDesArticles = (ref.read(articlesRayonProvider).value ?? const []).isNotEmpty;
     if (!aDesArticles) {
       context.push(Routes.nouvelArticle);
       return;
@@ -47,11 +48,12 @@ class _StockPageState extends ConsumerState<StockPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final articles = ref.watch(articlesProvider);
+    final articles = ref.watch(articlesRayonProvider);
     final devise = ref.watch(boutiqueActiveProvider).devise;
 
     return Scaffold(
       appBar: AppBar(
+        bottom: const BarreRayon(),
         title: _rechercheOuverte
             ? TextField(
                 autofocus: true,
@@ -81,11 +83,13 @@ class _StockPageState extends ConsumerState<StockPage> {
             PageErreur(erreur: e, onReessayer: () => ref.invalidate(articlesProvider)),
         data: (tous) {
           if (tous.isEmpty) {
-            return const PageVide(
-              icone: Icons.checkroom_outlined,
-              titre: 'Aucun article pour l’instant',
-              message: 'Ajoute ton premier article pour suivre ton stock '
-                  'et ce que tu as investi.',
+            final parfums = ref.read(rayonProvider) == Rayon.parfums;
+            return PageVide(
+              icone: parfums ? Icons.spa_outlined : Icons.checkroom_outlined,
+              titre: parfums ? 'Aucun parfum pour l’instant' : 'Aucun article pour l’instant',
+              message: parfums
+                  ? 'Touche + pour ajouter ton premier parfum : il sera compté à part des habits.'
+                  : 'Ajoute ton premier article pour suivre ton stock et ce que tu as investi.',
             );
           }
           final categories = categoriesDe(tous.where(_public.garde));

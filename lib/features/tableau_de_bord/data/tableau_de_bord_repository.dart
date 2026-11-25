@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/format/dates.dart';
+import '../../../core/rayon.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../depenses/data/depenses_repository.dart';
 import '../../stock/data/stock_repository.dart';
@@ -15,27 +16,33 @@ class TableauDeBordRepository {
 
   final SupabaseClient _client;
 
-  Map<String, dynamic> _bornes(Periode p) => {
+  Map<String, dynamic> _bornes(Periode p, Rayon r) => {
         'p_debut': FormatDate.iso(p.debut),
         'p_fin': FormatDate.iso(p.fin),
+        'p_rayon': r.code,
       };
 
-  Future<IndicateursPeriode> periode(Periode p) async {
-    final lignes = await _client.rpc('dashboard_periode', params: _bornes(p))
+  Future<IndicateursPeriode> periode(Periode p, Rayon r) async {
+    final lignes = await _client.rpc('dashboard_periode', params: _bornes(p, r))
         as List<dynamic>;
     return IndicateursPeriode.fromJson(lignes.first as Map<String, dynamic>);
   }
 
+  /// Les deux rayons ensemble (Mes dépenses : « Me verser un bénéfice »).
   Future<IndicateursActuels> actuels() async {
     final ligne = await _client.from('v_dashboard').select().maybeSingle();
-    return ligne == null
-        ? IndicateursActuels.vide
-        : IndicateursActuels.fromJson(ligne);
+    return ligne == null ? IndicateursActuels.vide : IndicateursActuels.fromJson(ligne);
   }
 
-  Future<List<ArticleVendu>> articlesVendus(Periode p) async {
+  /// Un seul rayon (Statistiques). Versé et disponible y restent communs.
+  Future<IndicateursActuels> actuelsRayon(Rayon r) async {
+    final ligne = await _client.from('v_dashboard_rayon').select().eq('rayon', r.code).maybeSingle();
+    return ligne == null ? IndicateursActuels.vide : IndicateursActuels.fromJson(ligne);
+  }
+
+  Future<List<ArticleVendu>> articlesVendus(Periode p, Rayon r) async {
     final lignes =
-        await _client.rpc('articles_vendus_periode', params: _bornes(p))
+        await _client.rpc('articles_vendus_periode', params: _bornes(p, r))
             as List<dynamic>;
     return lignes
         .map((l) => ArticleVendu.fromJson(l as Map<String, dynamic>))
@@ -69,7 +76,7 @@ final indicateursPeriodeProvider =
     FutureProvider.autoDispose<IndicateursPeriode>((ref) async {
   final periode = ref.watch(periodeProvider);
   await _suivreVentesEtStock(ref);
-  return ref.watch(tableauDeBordRepositoryProvider).periode(periode);
+  return ref.watch(tableauDeBordRepositoryProvider).periode(periode, ref.watch(rayonProvider));
 });
 
 final indicateursActuelsProvider =
@@ -80,11 +87,18 @@ final indicateursActuelsProvider =
   return ref.watch(tableauDeBordRepositoryProvider).actuels();
 });
 
+/// Indicateurs actuels du rayon affiché (Statistiques).
+final indicateursRayonProvider = FutureProvider.autoDispose<IndicateursActuels>((ref) async {
+  await _suivreVentesEtStock(ref);
+  await ref.watch(mouvementsProvider.future);
+  return ref.watch(tableauDeBordRepositoryProvider).actuelsRayon(ref.watch(rayonProvider));
+});
+
 final articlesVendusProvider =
     FutureProvider.autoDispose<List<ArticleVendu>>((ref) async {
   final periode = ref.watch(periodeProvider);
   await _suivreVentesEtStock(ref);
-  return ref.watch(tableauDeBordRepositoryProvider).articlesVendus(periode);
+  return ref.watch(tableauDeBordRepositoryProvider).articlesVendus(periode, ref.watch(rayonProvider));
 });
 
 /// Mêmes indicateurs sur la période de comparaison (voir Periode.precedente).
@@ -92,5 +106,5 @@ final indicateursPrecedentsProvider =
     FutureProvider.autoDispose<IndicateursPeriode>((ref) async {
   final periode = ref.watch(periodeProvider).precedente();
   await _suivreVentesEtStock(ref);
-  return ref.watch(tableauDeBordRepositoryProvider).periode(periode);
+  return ref.watch(tableauDeBordRepositoryProvider).periode(periode, ref.watch(rayonProvider));
 });

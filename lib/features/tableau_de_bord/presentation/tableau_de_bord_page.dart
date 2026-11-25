@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/montant.dart';
+import '../../../core/rayon.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/delta_texte.dart';
 import '../../../core/widgets/elements.dart';
@@ -39,7 +40,7 @@ class TableauDeBordPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Statistiques')),
+      appBar: AppBar(title: const Text('Statistiques'), bottom: const BarreRayon()),
       body: RefreshIndicator(
         onRefresh: rafraichir,
         child: ListView(
@@ -340,7 +341,7 @@ class _BlocGraphique extends ConsumerWidget {
     final devise = ref.watch(boutiqueActiveProvider).devise;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const EnTeteSection('Évolution'),
-      ref.watch(commandesProvider).when(
+      ref.watch(commandesRayonProvider).when(
             skipLoadingOnRefresh: true,
             loading: () => const Squelette(hauteur: 260, rayon: VallyRadius.md),
             error: (e, _) => PageErreur(erreur: e, onReessayer: () => ref.invalidate(commandesProvider)),
@@ -363,7 +364,7 @@ class _BlocArticles extends ConsumerWidget {
     final vally = theme.extension<VallyColors>()!;
     final devise = ref.watch(boutiqueActiveProvider).devise;
     final vendus = ref.watch(articlesVendusProvider);
-    final stock = ref.watch(articlesProvider);
+    final stock = ref.watch(articlesRayonProvider);
     final aujourdhui = DateTime.now();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -536,11 +537,11 @@ class _BlocActuel extends ConsumerWidget {
     final devise = ref.watch(boutiqueActiveProvider).devise;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const EnTeteSection('Depuis l’ouverture'),
-      ref.watch(indicateursActuelsProvider).when(
+      ref.watch(indicateursRayonProvider).when(
             skipLoadingOnRefresh: true,
             loading: () => const Squelette(hauteur: 200, rayon: VallyRadius.md),
             error: (e, _) =>
-                PageErreur(erreur: e, onReessayer: () => ref.invalidate(indicateursActuelsProvider)),
+                PageErreur(erreur: e, onReessayer: () => ref.invalidate(indicateursRayonProvider)),
             data: (a) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Card(
                 child: Padding(
@@ -553,11 +554,11 @@ class _BlocActuel extends ConsumerWidget {
                             style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
                     _Ligne('dont encaissé (ventes payées)',
                         MontantTexte(a.beneficeEncaisse.abs(), devise: devise, style: theme.textTheme.bodyMedium)),
-                    _Ligne('Déjà versé dans Mes dépenses',
+                    _Ligne('Déjà versé dans Mes dépenses (les deux rayons)',
                         MontantTexte(a.beneficeVerse, devise: devise, style: theme.textTheme.bodyMedium)),
                     const Divider(height: 20),
                     _Ligne(
-                      'Bénéfice disponible',
+                      'Bénéfice disponible (les deux rayons)',
                       MontantTexte(a.beneficeDisponible.abs(),
                           devise: devise,
                           sens: a.beneficeDisponible >= 0 ? SensMontant.positif : SensMontant.negatif,

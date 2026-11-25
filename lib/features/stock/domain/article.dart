@@ -1,6 +1,7 @@
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/format/texte.dart';
+import '../../../core/rayon.dart';
 
 /// En dessous de ce nombre de pièces restantes, le stock est « faible ».
 const seuilStockFaible = 2;
@@ -26,6 +27,7 @@ class Article {
     this.derniereVente,
     this.pourEnfant = false,
     this.nbAchats = 1,
+    this.rayon = Rayon.habits,
   });
 
   final String id;
@@ -59,6 +61,9 @@ class Article {
 
   bool get dejaRachete => nbAchats > 1;
 
+  /// Habits ou parfums : un article vendu ne change plus de rayon.
+  final Rayon rayon;
+
   bool get epuise => quantiteRestante <= 0;
   bool get stockFaible => !epuise && quantiteRestante <= seuilStockFaible;
 
@@ -91,6 +96,7 @@ class Article {
         pourEnfant: json['pour_enfant'] as bool? ?? false,
         // Absente avant la mise à jour SQL « réapprovisionnement ».
         nbAchats: (json['nb_achats'] as num?)?.toInt() ?? 1,
+        rayon: Rayon.depuisCode(json['rayon'] as String?),
       );
 }
 
@@ -177,8 +183,10 @@ class ArticleSaisie {
     this.fournisseur,
     required this.dateAppro,
     this.pourEnfant = false,
+    this.rayon = Rayon.habits,
   });
 
+  final Rayon rayon;
   final String nom;
   final String categorie;
   final String taille;
@@ -192,6 +200,7 @@ class ArticleSaisie {
 
   Map<String, dynamic> toJson() => {
         'pour_enfant': pourEnfant,
+        'rayon': rayon.code,
         'nom': nom.trim(),
         'categorie': categorie.trim(),
         'taille': taille.trim(),
@@ -278,6 +287,12 @@ enum Public {
         enfant => a.pourEnfant,
       };
 }
+
+/// Rayon Parfums : catégories et contenances proposées.
+const categoriesParfums = [
+  'Parfum', 'Eau de parfum', 'Eau de toilette', 'Huile parfumée', 'Coffret', 'Déodorant',
+];
+const contenancesParfums = ['30 ml', '50 ml', '75 ml', '100 ml', '150 ml', '200 ml'];
 
 /// Tailles proposées selon le public.
 const taillesAdulte = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unique'];

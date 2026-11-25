@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
+import '../../../core/rayon.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/montant_texte.dart';
@@ -31,9 +32,11 @@ class AccueilPage extends ConsumerWidget {
     final boutique = ref.watch(boutiqueActiveProvider);
     final devise = boutique.devise;
     final maintenant = DateTime.now();
-    final commandes = ref.watch(commandesProvider).value ?? const <Commande>[];
+    // Tout se lit dans le rayon choisi (habits ou parfums, comptés à part).
+    final rayon = ref.watch(rayonProvider);
+    final commandes = ref.watch(commandesRayonProvider).value ?? const <Commande>[];
     final clients = ref.watch(clientsResumeProvider).value ?? const <ClientResume>[];
-    final articles = ref.watch(articlesProvider).value ?? const <Article>[];
+    final articles = ref.watch(articlesRayonProvider).value ?? const <Article>[];
 
     final jour = ResumePeriode.du(commandes, (d) => DateUtils.isSameDay(d, maintenant));
     final mois = ResumePeriode.du(
@@ -43,9 +46,9 @@ class AccueilPage extends ConsumerWidget {
       ...filtrerCommandes(commandes, aujourdhui: maintenant, filtre: FiltreCommandes.enRetard),
       ...filtrerCommandes(commandes, aujourdhui: maintenant, filtre: FiltreCommandes.aujourdhui),
     ];
-    final debiteurs = clients.where((c) => c.doit).toList()
-      ..sort((a, b) => b.totalDu.compareTo(a.totalDu));
-    final totalDu = debiteurs.fold<double>(0, (s, c) => s + c.totalDu);
+    final debiteurs = clients.where((c) => c.duPour(rayon) > 0).toList()
+      ..sort((a, b) => b.duPour(rayon).compareTo(a.duPour(rayon)));
+    final totalDu = debiteurs.fold<double>(0, (s, c) => s + c.duPour(rayon));
     final presqueEpuises = articles.where((a) => a.stockFaible || a.epuise).toList();
 
     Future<void> rafraichir() async {
@@ -67,7 +70,10 @@ class AccueilPage extends ConsumerWidget {
                 nom: boutique.nom,
                 phrase: phraseDuJour(ventes: jour.nbVentes, taches: taches.length),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+              // Habits ou parfums : un toucher change tous les chiffres de l'écran.
+              const ChoixRayon(),
+              const SizedBox(height: 14),
               _CarteJour(
                 jour: jour,
                 mois: mois,
@@ -125,6 +131,7 @@ class AccueilPage extends ConsumerWidget {
                       if (i > 0) const TraitRegistre(),
                       _LigneDette(
                         client: c,
+                        du: c.duPour(rayon),
                         devise: devise,
                         onTap: () => context.push(Routes.client(c.id)),
                       ),
@@ -503,7 +510,10 @@ class _CaseACocher extends StatelessWidget {
 
 /// Une ligne du cahier des dettes : nom à gauche, montant à droite.
 class _LigneDette extends StatelessWidget {
-  const _LigneDette({required this.client, required this.devise, required this.onTap});
+  const _LigneDette({required this.client, required this.du, required this.devise, required this.onTap});
+
+  /// Ce que le client doit dans le rayon affiché.
+  final double du;
 
   final ClientResume client;
   final Devise devise;
@@ -532,7 +542,7 @@ class _LigneDette extends StatelessWidget {
             ]),
           ),
           const SizedBox(width: 12),
-          MontantTexte(c.totalDu,
+          MontantTexte(du,
               devise: devise,
               sens: SensMontant.negatif,
               style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),

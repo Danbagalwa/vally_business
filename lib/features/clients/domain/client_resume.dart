@@ -1,4 +1,5 @@
 import '../../../core/format/dates.dart';
+import '../../../core/rayon.dart';
 
 double _n(Object? v) => (v as num?)?.toDouble() ?? 0;
 
@@ -13,7 +14,9 @@ class ClientResume {
     required this.totalDu,
     required this.nbImpayes,
     this.dernierAchat,
-  });
+    double? duHabits,
+    this.duParfums = 0,
+  }) : duHabits = duHabits ?? totalDu;
 
   final String id;
   final String nom;
@@ -27,6 +30,12 @@ class ClientResume {
   final DateTime? dernierAchat;
 
   bool get doit => totalDu > 0;
+
+  /// La dette, rayon par rayon (base pas à jour : tout en habits).
+  final double duHabits;
+  final double duParfums;
+
+  double duPour(Rayon r) => r == Rayon.parfums ? duParfums : duHabits;
 
   /// Initiales pour l'avatar : « Maman Rose » → « MR ».
   String get initiales {
@@ -45,6 +54,8 @@ class ClientResume {
         dernierAchat: j['dernier_achat'] == null
             ? null
             : FormatDate.lire(j['dernier_achat'] as String),
+        duHabits: j.containsKey('du_habits') ? _n(j['du_habits']) : null,
+        duParfums: _n(j['du_parfums']),
       );
 }
 

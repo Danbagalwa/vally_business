@@ -422,5 +422,47 @@ await expectErr('l’historique ne s’écrit pas à la main', () => as(A,
   `insert into approvisionnements (article_id, quantite, prix_achat) values ($1, 1, 1)`, [robe.id]), 'permission');
 await expectErr('… ni ne se modifie', () => as(A, `update approvisionnements set quantite = 99`), 'permission');
 
+console.log('\nRayons : habits et parfums comptés à part');
+const [parfum] = await expectOk('un parfum est un article du rayon « parfums »', () => as(A,
+  `insert into articles (nom, categorie, taille, quantite_achetee, prix_achat, prix_vente_habituel, rayon)
+   values ('Oud royal', 'Parfum', '100 ml', 5, 20000, 35000, 'parfums') returning id, rayon`),
+  (r) => r[0].rayon === 'parfums');
+await expectOk('un article sans rayon est un habit', () => as(A,
+  `select rayon from articles where nom = 'Robe rachat'`), (r) => r[0].rayon === 'habits');
+const [clientP] = await as(A, `insert into clients (nom) values ('Client parfum') returning id`);
+const [venteParfum] = await as(A, `insert into commandes (client_id) values ($1) returning id`, [clientP.id]);
+await expectOk('la vente prend le rayon de son premier article', async () => {
+  await as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+     values ($1, $2, 2, 35000, 0)`, [venteParfum.id, parfum.id]);
+  return as(A, `select rayon, total from v_commandes where id = $1`, [venteParfum.id]);
+}, (r) => r[0].rayon === 'parfums' && Number(r[0].total) === 70000);
+await expectErr('pas d’habit dans une vente de parfums', async () => {
+  const [ch] = await as(A, `select id from articles where nom = 'Chemise correction'`);
+  return as(A, `insert into lignes_commande (commande_id, article_id, quantite, prix_vendu, prix_achat_snapshot)
+     values ($1, $2, 1, 9000, 0)`, [venteParfum.id, ch.id]);
+}, 'rayon_melange');
+await expectErr('un parfum vendu ne change plus de rayon', () => as(A,
+  `update articles set rayon = 'habits' where id = $1`, [parfum.id]), 'rayon_fige');
+await expectOk('indicateurs par rayon : 70 000 de parfums, rien de mélangé', () => as(A,
+  `select rayon, chiffre_affaires, benefice_realise, valeur_stock_restant from v_dashboard_rayon order by rayon`),
+  (r) => r.length === 2 && r[1].rayon === 'parfums' && Number(r[1].chiffre_affaires) === 70000
+         && Number(r[1].benefice_realise) === 30000 && Number(r[1].valeur_stock_restant) === 60000);
+await expectOk('les deux rayons ensemble = v_dashboard', async () => [
+  ...(await as(A, `select sum(chiffre_affaires) as ca from v_dashboard_rayon`)),
+  ...(await as(A, `select chiffre_affaires as ca from v_dashboard`)),
+], (r) => Number(r[0].ca) === Number(r[1].ca));
+await expectOk('statistiques de la période, rayon parfums seul', async () => {
+  const jour = new Date().toISOString().slice(0, 10);
+  return [
+    ...(await as(A, `select chiffre_affaires, total_approvisionne from dashboard_periode($1, $1, 'parfums')`, [jour])),
+    ...(await as(A, `select quantite from articles_vendus_periode($1, $1, 'parfums')`, [jour])),
+  ];
+}, (r) => Number(r[0].chiffre_affaires) === 70000 && Number(r[0].total_approvisionne) === 100000 && r[1].quantite === 2);
+await expectOk('dette d’un client rangée dans son rayon', () => as(A,
+  `select du_habits, du_parfums, total_du from v_clients where id = $1`, [clientP.id]),
+  (r) => Number(r[0].du_parfums) === 70000 && Number(r[0].du_habits) === 0 && Number(r[0].total_du) === 70000);
+await expectOk('C ne voit pas les rayons de Vally', () => as(C, `select * from v_dashboard_rayon`),
+  (r) => r.every((x) => Number(x.chiffre_affaires) === 0));
+
 console.log(`\n${ok} réussis, ${ko} échoués`);
 process.exit(ko ? 1 : 0);

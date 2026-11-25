@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/dates.dart';
+import '../../../core/rayon.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/carnet.dart';
@@ -33,10 +34,11 @@ class _VentesPageState extends ConsumerState<VentesPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final devise = ref.watch(boutiqueActiveProvider).devise;
-    final commandes = ref.watch(commandesProvider);
+    final commandes = ref.watch(commandesRayonProvider);
 
     return Scaffold(
       appBar: AppBar(
+        bottom: const BarreRayon(),
         title: _rechercheOuverte
             ? TextField(
                 autofocus: true,

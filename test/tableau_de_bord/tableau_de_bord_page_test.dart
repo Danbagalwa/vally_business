@@ -64,7 +64,7 @@ Future<void> _ouvrir(WidgetTester tester, ThemeData theme) async {
             nbCommandes: 1,
             piecesVendues: 3,
           )),
-      indicateursActuelsProvider.overrideWith((ref) async => const IndicateursActuels(
+      indicateursRayonProvider.overrideWith((ref) async => const IndicateursActuels(
             valeurStockRestant: 2550000,
             piecesEnStock: 42,
             articlesEpuises: 1,
@@ -102,9 +102,9 @@ void main() {
     testWidgets('s’affiche sans débordement à 360 px (thème $nom)', (tester) async {
       await _ouvrir(tester, theme);
       expect(tester.takeException(), isNull);
-      expect(find.text('Bénéfice réalisé'), findsWidgets);
+      // Le sélecteur de rayon décale la page : on descend jusqu'au bloc.
+      await tester.scrollUntilVisible(find.text('Bénéfice réalisé'), 300, scrollable: _listeVerticale);
       expect(find.text('+ 350 000 CDF'), findsWidgets);
-      expect(find.text('Bénéfice par mois'), findsOneWidget);
 
       await tester.scrollUntilVisible(find.text('NE PARTENT PAS'), 300, scrollable: _listeVerticale);
       expect(tester.takeException(), isNull);

@@ -1,6 +1,7 @@
 import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/format/texte.dart';
+import '../../../core/rayon.dart';
 
 /// Vente au comptoir (remise tout de suite) ou commande (remise plus tard).
 enum TypeCommande {
@@ -106,6 +107,7 @@ class Commande {
     this.adresseLivraison,
     this.fraisLivraison = 0,
     this.articles = const [],
+    this.rayon = Rayon.habits,
   });
 
   final String id;
@@ -145,6 +147,9 @@ class Commande {
   /// Articles vendus, dans l'ordre de saisie (colonne `articles_resume` de
   /// v_commandes). Vide tant que la mise à jour SQL du 21/11 n'est pas faite.
   final List<ArticleDeVente> articles;
+
+  /// Habits ou parfums (pris du premier article vendu).
+  final Rayon rayon;
 
   bool get estCommande => type == TypeCommande.commande;
   bool get annulee => statutLivraison == StatutLivraison.annulee;
@@ -222,6 +227,7 @@ class Commande {
             if (a is Map && a['nom'] is String)
               (nom: a['nom'] as String, quantite: (a['quantite'] as num?)?.toInt() ?? 1),
         ],
+        rayon: Rayon.depuisCode(json['rayon'] as String?),
       );
 }
 

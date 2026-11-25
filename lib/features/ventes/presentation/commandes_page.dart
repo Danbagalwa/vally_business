@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/format/dates.dart';
+import '../../../core/rayon.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/elements.dart';
 import '../../../core/widgets/page_erreur.dart';
@@ -45,11 +46,12 @@ class _CommandesPageState extends ConsumerState<CommandesPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final devise = ref.watch(boutiqueActiveProvider).devise;
-    final commandes = ref.watch(commandesProvider);
+    final commandes = ref.watch(commandesRayonProvider);
     final aujourdhui = DateTime.now();
 
     return Scaffold(
       appBar: AppBar(
+        bottom: const BarreRayon(),
         title: _rechercheOuverte
             ? TextField(
                 autofocus: true,

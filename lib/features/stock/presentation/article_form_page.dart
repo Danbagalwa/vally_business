@@ -9,6 +9,7 @@ import '../../../core/format/dates.dart';
 import '../../../core/format/montant.dart';
 import '../../../core/format/texte.dart';
 import '../../../core/images.dart';
+import '../../../core/rayon.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/widgets/carnet.dart';
 import '../../../core/widgets/champ_montant.dart';
@@ -85,6 +86,9 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
   late final MontantSaisieController _prixAchat, _prixVente;
   late DateTime _dateAppro;
   late bool _pourEnfant;
+  late Rayon _rayon;
+
+  bool get _parfum => _rayon == Rayon.parfums;
 
   PhotoCompressee? _nouvellePhoto;
   bool _compression = false;
@@ -112,6 +116,8 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
     _prixVente = MontantSaisieController(devise: _boutique.devise, initial: a?.prixVenteHabituel);
     _dateAppro = a?.dateAppro ?? DateUtils.dateOnly(DateTime.now());
     _pourEnfant = a?.pourEnfant ?? false;
+    // Nouvel article : le rayon affiché dans l'appli.
+    _rayon = a?.rayon ?? ref.read(rayonProvider);
   }
 
   @override
@@ -236,6 +242,7 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
       fournisseur: _fournisseur.text,
       dateAppro: _achatFige ? a!.dateAppro : _dateAppro,
       pourEnfant: _pourEnfant,
+      rayon: _rayon,
     );
     try {
       final id = a?.id ?? await repo.ajouter(saisie);
@@ -371,29 +378,56 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
 
             // ─── L'article ───
             const TitreSection('L’article', taille: 16, marge: marge),
-            Text('Pour qui ?',
+            // Rayon : habits ou parfums, comptés à part. Figé une fois vendu.
+            Text('Rayon',
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Wrap(spacing: 8, children: [
-              FiltrePastille(
-                libelle: 'Adulte',
-                actif: !_pourEnfant,
-                onTap: () => setState(() => _pourEnfant = false),
-              ),
-              FiltrePastille(
-                libelle: 'Enfant',
-                icone: Icons.child_care,
-                actif: _pourEnfant,
-                onTap: () => setState(() => _pourEnfant = true),
-              ),
+              for (final r in Rayon.values)
+                FiltrePastille(
+                  libelle: r.libelle,
+                  icone: r.icone,
+                  actif: _rayon == r,
+                  onTap: () {
+                    if (dejaVendu > 0 && r != _rayon) {
+                      afficherErreur(context, 'Cet article a déjà été vendu : il reste dans son rayon.');
+                      return;
+                    }
+                    setState(() {
+                      _rayon = r;
+                      if (r == Rayon.parfums) _pourEnfant = false;
+                    });
+                  },
+                ),
             ]),
+            if (!_parfum) ...[
+              const SizedBox(height: 16),
+              Text('Pour qui ?',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, children: [
+                FiltrePastille(
+                  libelle: 'Adulte',
+                  actif: !_pourEnfant,
+                  onTap: () => setState(() => _pourEnfant = false),
+                ),
+                FiltrePastille(
+                  libelle: 'Enfant',
+                  icone: Icons.child_care,
+                  actif: _pourEnfant,
+                  onTap: () => setState(() => _pourEnfant = true),
+                ),
+              ]),
+            ],
             const SizedBox(height: 16),
             TextFormField(
               controller: _nom,
               textCapitalization: TextCapitalization.sentences,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Nom', hintText: 'Ex. : Robe pagne fleurie'),
+              decoration: InputDecoration(
+                  labelText: 'Nom', hintText: _parfum ? 'Ex. : Oud royal' : 'Ex. : Robe pagne fleurie'),
               validator: _obligatoire('Donne un nom à l’article.'),
             ),
             // Nouvel article dont le nom existe déjà : sans doute un rachat.
@@ -411,17 +445,17 @@ class _FormulaireState extends ConsumerState<_Formulaire> {
               controller: _categorie,
               label: 'Catégorie',
               suggestions: {
-                ..._categoriesCourantes,
-                ...categoriesDe(ref.read(articlesProvider).value ?? const []),
+                ...(_parfum ? categoriesParfums : _categoriesCourantes),
+                ...categoriesDe(existants.where((a) => a.rayon == _rayon)),
               }.toList(),
               validator: _obligatoire('Choisis une catégorie.'),
             ),
             const SizedBox(height: VallySpace.s4),
             _ChampAvecSuggestions(
               controller: _taille,
-              label: _pourEnfant ? 'Taille (âge)' : 'Taille',
-              suggestions: _pourEnfant ? taillesEnfant : taillesAdulte,
-              validator: _obligatoire('Indique la taille (ou « Unique »).'),
+              label: _parfum ? 'Contenance' : (_pourEnfant ? 'Taille (âge)' : 'Taille'),
+              suggestions: _parfum ? contenancesParfums : (_pourEnfant ? taillesEnfant : taillesAdulte),
+              validator: _obligatoire(_parfum ? 'Indique la contenance (ex. : 100 ml).' : 'Indique la taille (ou « Unique »).'),
             ),
             const SizedBox(height: VallySpace.s4),
             TextFormField(

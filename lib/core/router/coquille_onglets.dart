@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../features/ventes/data/ventes_repository.dart';
+import '../rayon.dart';
 import '../../features/ventes/domain/commande.dart';
 
 class _Onglet {
@@ -39,7 +39,7 @@ class CoquilleOnglets extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final commandes = ref.watch(commandesProvider).value ?? const <Commande>[];
+    final commandes = ref.watch(commandesRayonProvider).value ?? const <Commande>[];
     final maintenant = DateTime.now();
     final aTraiter = compterCommandes(commandes, maintenant);
     final aLivrer =
